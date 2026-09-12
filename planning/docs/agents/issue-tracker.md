@@ -1,6 +1,6 @@
 # Issue tracker: GitHub
 
-Issues and specs live as GitHub issues in **bugscoderlab/opennotebook** — the tracker repository. The product code lives in bugscoderlab/open-intel-saas; do NOT infer the tracker from the workspace's git remotes (`fork`/`upstream` point at the product repos). Use the `gh` CLI for all operations and always pass the tracker explicitly with `-R bugscoderlab/opennotebook` (or `--repo bugscoderlab/opennotebook`), since the workspace clone is a different repository.
+Issues and specs live as GitHub issues in **bugscoderlab/open-intel-saas** — the same repository as the product code (moved from `bugscoderlab/opennotebook` on 2026-09-12, preserving issue numbers, comments, and native blocking edges; the old repo is archived and its issue URLs redirect). The workspace's `fork` remote points at the tracker repo, so `gh` infers it automatically; pass `-R bugscoderlab/open-intel-saas` explicitly when running from anywhere else.
 
 ## Conventions
 
@@ -11,7 +11,7 @@ Issues and specs live as GitHub issues in **bugscoderlab/opennotebook** — the 
 - **Apply / remove labels**: `gh issue edit <number> --add-label "..."` / `--remove-label "..."`
 - **Close**: `gh issue close <number> --comment "..."`
 
-Infer the tracker repo from this file (`bugscoderlab/opennotebook`), never from the workspace's git remotes.
+Infer the tracker repo from this file (`bugscoderlab/open-intel-saas`), which is also the workspace's `fork` remote.
 
 ## Pull requests as a triage surface
 

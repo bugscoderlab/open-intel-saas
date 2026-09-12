@@ -1,6 +1,6 @@
 # Open Intel — product fork of Open Notebook
 
-Multi-organization competitor-intelligence SaaS, built as a maintained fork of [lfnovo/open-notebook](https://github.com/lfnovo/open-notebook). Architecture source of truth: `planning/open-notebook-multiteam-saas-plan-2.md` (folded into this repo from the former planning workspace; `bugscoderlab/opennotebook` now serves as the issue tracker only).
+Multi-organization competitor-intelligence SaaS, built as a maintained fork of [lfnovo/open-notebook](https://github.com/lfnovo/open-notebook). Architecture source of truth: `planning/open-notebook-multiteam-saas-plan-2.md`. Issues and specs live in this repo's GitHub issue tracker (transferred from `bugscoderlab/opennotebook`, numbers preserved; that repo is archived).
 
 ## Open Notebook upstream baseline
 
