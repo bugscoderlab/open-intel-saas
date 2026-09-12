@@ -219,7 +219,7 @@ async def api(settings: Settings):
     )
     app.state.recording_email = recording_email
     client = AsyncClient(transport=ASGITransport(app=app), base_url="http://api.test")
-    client.app = app  # convenience handle for tests
+    client.app = app  # type: ignore[attr-defined] # convenience handle for tests
     async with client:
         yield client
     await engine.dispose()

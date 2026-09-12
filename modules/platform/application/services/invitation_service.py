@@ -117,13 +117,22 @@ async def create_invitation(
     # Already a member of the target? Refuse instead of a dead invitation.
     invitee_id = await unit.app_users.get_id_by_email(email)
     if invitee_id is not None:
+        already = False
         if scope == "organization":
-            existing = await unit.memberships.get(organization_id, invitee_id)
+            already = (
+                await unit.memberships.get(organization_id, invitee_id) is not None
+            )
         elif scope == "team":
-            existing = await unit.team_memberships.get(team_id, invitee_id)  # type: ignore[arg-type]
+            already = (
+                await unit.team_memberships.get(team_id, invitee_id)  # type: ignore[arg-type]
+                is not None
+            )
         else:
-            existing = await unit.project_memberships.get(project_id, invitee_id)  # type: ignore[arg-type]
-        if existing is not None:
+            already = (
+                await unit.project_memberships.get(project_id, invitee_id)  # type: ignore[arg-type]
+                is not None
+            )
+        if already:
             raise ConflictError("this person is already a member")
 
     raw_token = secrets.token_urlsafe(TOKEN_BYTES)

@@ -8,6 +8,7 @@ protection, per-scope Permission enforcement, and audit entries.
 from __future__ import annotations
 
 import uuid
+from collections.abc import AsyncIterator
 from urllib.parse import urlparse
 
 import asyncpg
@@ -25,7 +26,7 @@ async def owner(user_factory) -> TestUser:
 
 
 @pytest_asyncio.fixture
-async def org(api, owner: TestUser, settings) -> str:
+async def org(api, owner: TestUser, settings) -> AsyncIterator[str]:
     response = await api.post(
         "/organizations",
         json={"name": f"Org {uuid.uuid4().hex[:8]}"},

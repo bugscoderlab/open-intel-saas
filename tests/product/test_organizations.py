@@ -8,6 +8,7 @@ removal, and audit completeness — against the managed project.
 from __future__ import annotations
 
 import uuid
+from collections.abc import AsyncIterator
 
 import asyncpg
 import pytest
@@ -24,7 +25,7 @@ async def owner(user_factory) -> TestUser:
 
 
 @pytest_asyncio.fixture
-async def org(api, owner: TestUser, settings) -> str:
+async def org(api, owner: TestUser, settings) -> AsyncIterator[str]:
     """An organization owned by `owner`; deleted at teardown."""
     response = await api.post(
         "/organizations",

@@ -251,7 +251,7 @@ def make_authz(**roles):
         AuthorizationService,
     )
 
-    return AuthorizationService(FakeUnit(**roles))
+    return AuthorizationService(FakeUnit(**roles))  # type: ignore[arg-type]
 
 
 @pytest.mark.asyncio

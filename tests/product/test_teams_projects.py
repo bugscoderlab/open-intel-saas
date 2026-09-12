@@ -10,6 +10,7 @@ the editor/viewer choice.
 from __future__ import annotations
 
 import uuid
+from collections.abc import AsyncIterator
 
 import asyncpg
 import pytest
@@ -26,7 +27,7 @@ async def owner(user_factory) -> TestUser:
 
 
 @pytest_asyncio.fixture
-async def org(api, owner: TestUser, settings) -> str:
+async def org(api, owner: TestUser, settings) -> AsyncIterator[str]:
     response = await api.post(
         "/organizations",
         json={"name": f"Org {uuid.uuid4().hex[:8]}"},

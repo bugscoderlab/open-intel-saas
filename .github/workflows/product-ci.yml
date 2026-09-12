@@ -14,6 +14,14 @@ on:
 jobs:
   backend:
     runs-on: ubuntu-latest
+    env:
+      # Managed-project connection for the managed tests (ticket #11+).
+      # SUPABASE_DB_PASSWORD and SUPABASE_SERVICE_ROLE_KEY are repo secrets.
+      SUPABASE_URL: https://blzyregwuiiplteehbtl.supabase.co
+      SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      OPEN_INTEL_SEED_PASSWORD: seed-password-change-me
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -22,7 +30,7 @@ jobs:
       - name: Install product dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install fastapi "uvicorn[standard]" pytest import-linter httpx mypy ruff
+          pip install fastapi "uvicorn[standard]" pytest pytest-asyncio import-linter httpx mypy ruff sqlalchemy asyncpg "pyjwt[crypto]" python-dotenv
       - name: Ruff (product code)
         run: ruff check modules tests/product serve.py
       - name: Mypy (platform module + product tests)
@@ -48,3 +56,8 @@ jobs:
         run: npm run lint
       - name: Build
         run: npm run build
+        env:
+          # Build-time public config (non-secret publishable key).
+          NEXT_PUBLIC_SUPABASE_URL: https://blzyregwuiiplteehbtl.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+          NEXT_PUBLIC_API_URL: http://localhost:5055

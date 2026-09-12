@@ -127,6 +127,7 @@ async def test_oauth_insert_ordering_still_records_identity(
     await insert_identity(tx, user_id, "google", google_subject, email)
 
     app_user = await get_app_user(tx, email)
+    assert app_user is not None
     identities = await tx.fetch(
         "select * from public.user_identities where app_user_id = $1",
         app_user["id"],
@@ -170,20 +171,26 @@ async def test_email_confirmation_flips_status_to_active(
     email = unique_email("confirm")
     user_id = await insert_auth_user(tx, email)
     await insert_identity(tx, user_id, "email", email, email)
-    assert (await get_app_user(tx, email))["status"] == "pending"
+    app_user = await get_app_user(tx, email)
+    assert app_user is not None
+    assert app_user["status"] == "pending"
 
     await tx.execute(
         "update auth.users set email_confirmed_at = now() where id = $1", user_id
     )
 
-    assert (await get_app_user(tx, email))["status"] == "active"
+    app_user = await get_app_user(tx, email)
+    assert app_user is not None
+    assert app_user["status"] == "active"
 
 
 async def test_confirmed_signup_is_active_immediately(tx: asyncpg.Connection) -> None:
     email = unique_email("preconfirmed")
     user_id = await insert_auth_user(tx, email, confirmed=True)
     await insert_identity(tx, user_id, "email", email, email)
-    assert (await get_app_user(tx, email))["status"] == "active"
+    app_user = await get_app_user(tx, email)
+    assert app_user is not None
+    assert app_user["status"] == "active"
 
 
 async def test_auth_user_deletion_removes_application_user(

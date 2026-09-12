@@ -522,7 +522,7 @@ class SqlInvitations:
             )
             .values(consumed_at=datetime.now(UTC))
         )
-        return result.rowcount == 1
+        return result.rowcount == 1  # type: ignore[attr-defined]
 
 
 class SqlAuditLog:
