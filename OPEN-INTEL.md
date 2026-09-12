@@ -1,6 +1,6 @@
 # Open Intel — product fork of Open Notebook
 
-Multi-organization competitor-intelligence SaaS, built as a maintained fork of [lfnovo/open-notebook](https://github.com/lfnovo/open-notebook). Architecture source of truth: the planning workspace (`bugscoderlab/opennotebook`, plan doc `open-notebook-multiteam-saas-plan-2.md`).
+Multi-organization competitor-intelligence SaaS, built as a maintained fork of [lfnovo/open-notebook](https://github.com/lfnovo/open-notebook). Architecture source of truth: `planning/open-notebook-multiteam-saas-plan-2.md` (folded into this repo from the former planning workspace; `bugscoderlab/opennotebook` now serves as the issue tracker only).
 
 ## Open Notebook upstream baseline
 
@@ -19,7 +19,7 @@ Multi-organization competitor-intelligence SaaS, built as a maintained fork of [
 
 ## Layout (plan §19)
 
-Product-owned modules live under `modules/`; upstream code (`api/`, `open_notebook/`, `frontend/`) remains in the tree for now as **reference-to-port** — it is never run in place. The Research module migration (Phase 2) ports from `open_notebook/` (seam: `open_notebook/database/repository.py`) and removes the leftover upstream code. See `AGENTS.md` in the planning workspace for conventions.
+Product-owned modules live under `modules/`; upstream code (`api/`, `open_notebook/`, `frontend/`) remains in the tree for now as **reference-to-port** — it is never run in place. The Research module migration (Phase 2) ports from `open_notebook/` (seam: `open_notebook/database/repository.py`) and removes the leftover upstream code. Product planning (plan, glossary, agent docs, research) lives in `planning/`; see `planning/AGENTS.md` for conventions.
 
 `shell/` is the product's Next.js frontend (upstream's `frontend/` name is occupied until Phase 2 removes the leftover upstream code). `serve.py` at the root is the API composition root.
 
