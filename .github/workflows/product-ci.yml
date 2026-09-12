@@ -18,6 +18,7 @@ jobs:
       # Managed-project connection for the managed tests (ticket #11+).
       # SUPABASE_DB_PASSWORD and SUPABASE_SERVICE_ROLE_KEY are repo secrets.
       SUPABASE_URL: https://blzyregwuiiplteehbtl.supabase.co
+      SUPABASE_DB_HOST: db.blzyregwuiiplteehbtl.supabase.co
       SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
