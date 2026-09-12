@@ -2,8 +2,10 @@
 --
 -- The product owns these tables; auth.users is never referenced by FK
 -- (ticket #11 decision). One Application user per email; identities link
--- every provider subject to it. app_users.id mirrors nothing in Supabase
--- Auth — it is the stable identity all business tables reference.
+-- every provider subject to it. The provisioning trigger initializes
+-- app_users.id to the auth user id, and user_identities is the mapping
+-- the API resolves principals through — the auth user id is never a
+-- dependency the product relies on.
 
 create table if not exists public.app_users (
     id uuid primary key default gen_random_uuid(),
