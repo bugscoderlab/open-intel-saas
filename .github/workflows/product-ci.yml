@@ -16,9 +16,14 @@ jobs:
     runs-on: ubuntu-latest
     env:
       # Managed-project connection for the managed tests (ticket #11+).
-      # SUPABASE_DB_PASSWORD and SUPABASE_SERVICE_ROLE_KEY are repo secrets.
+      # SUPABASE_SERVICE_ROLE_KEY is a repo secret. DATABASE_URL comes from
+      # the SUPABASE_POOLER_URL secret: the direct host (db.<ref>) is
+      # IPv6-only since Supabase's migration, and GitHub-hosted runners
+      # have no IPv6 egress — the ap-south-1 session-mode pooler is the
+      # IPv4 path. DATABASE_URL wins over SUPABASE_DB_HOST in Settings.
       SUPABASE_URL: https://blzyregwuiiplteehbtl.supabase.co
       SUPABASE_DB_HOST: db.blzyregwuiiplteehbtl.supabase.co
+      DATABASE_URL: ${{ secrets.SUPABASE_POOLER_URL }}
       SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
