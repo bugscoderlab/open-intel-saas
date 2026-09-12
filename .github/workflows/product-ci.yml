@@ -1,0 +1,50 @@
+name: product-ci
+
+# Open Intel product checks (ticket 10). Runs the platform scaffold checks:
+# product unit/HTTP tests, architecture contracts, typecheck, and the
+# Next.js shell build + feature-boundary lint. Upstream workflows are left
+# untouched and are not part of product CI.
+
+on:
+  push:
+    branches: [product/open-intel-v1]
+  pull_request:
+    branches: [product/open-intel-v1]
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install product dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install fastapi "uvicorn[standard]" pytest import-linter httpx mypy ruff
+      - name: Ruff (product code)
+        run: ruff check modules tests/product serve.py
+      - name: Mypy (platform module + product tests)
+        run: mypy modules/platform tests/product --ignore-missing-imports
+      - name: Architecture contracts (import-linter)
+        run: lint-imports
+      - name: Product tests
+        run: pytest tests/product -q
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: shell
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install shell dependencies
+        run: npm ci
+      - name: Feature-boundary lint
+        run: npm run lint
+      - name: Build
+        run: npm run build

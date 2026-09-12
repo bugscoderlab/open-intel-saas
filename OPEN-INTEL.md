@@ -21,6 +21,22 @@ Multi-organization competitor-intelligence SaaS, built as a maintained fork of [
 
 Product-owned modules live under `modules/`; upstream code (`api/`, `open_notebook/`, `frontend/`) remains in the tree for now as **reference-to-port** — it is never run in place. The Research module migration (Phase 2) ports from `open_notebook/` (seam: `open_notebook/database/repository.py`) and removes the leftover upstream code. See `AGENTS.md` in the planning workspace for conventions.
 
+`shell/` is the product's Next.js frontend (upstream's `frontend/` name is occupied until Phase 2 removes the leftover upstream code). `serve.py` at the root is the API composition root.
+
+## Product scaffold commands (ticket 10)
+
+```bash
+uv venv .venv && uv pip install --python .venv/bin/python fastapi 'uvicorn[standard]' pytest import-linter httpx mypy ruff python-dotenv
+.venv/bin/pytest tests/product -q        # product tests only (upstream tests/ is reference)
+.venv/bin/lint-imports                   # architecture contracts (plan §14)
+.venv/bin/mypy modules/platform tests/product --ignore-missing-imports
+.venv/bin/ruff check modules tests/product serve.py
+.venv/bin/uvicorn serve:app --reload --port 5055
+cd shell && npm install && npm run lint && npm run build
+```
+
+Optional modules are disabled with `OPEN_INTEL_DISABLED_MODULES=research,analytics`; the API must still start (plan §20). CI: `.github/workflows/product-ci.yml`.
+
 ## License
 
 Upstream MIT license and copyright notices are preserved in `LICENSE`; product-owned modifications are identified in this file and per-module READMEs.

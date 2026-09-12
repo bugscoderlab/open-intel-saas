@@ -67,6 +67,7 @@ dev = [
     "pytest-asyncio>=1.2.0",
     "pytest-cov>=7.0.0",
     "ruff>=0.14.13",
+    "import-linter>=2.1",
     "types-requests>=2.32.4.20250913",
 ]
 notebooks = [
@@ -97,3 +98,54 @@ ignore = [
 # pipeline never imports. Drop this override once podcast-creator ships a
 # release without moviepy (already removed on its main branch).
 override-dependencies = ["pillow>=12.2.0"]
+
+# Open Intel product architecture contracts (plan §14, ticket #4 decision).
+# Enforced by `lint-imports` from the repository root; CI fails on violation.
+[tool.importlinter]
+root_package = "modules"
+include_external_packages = true
+
+[[tool.importlinter.contracts]]
+name = "Platform module layering: api → application → infrastructure → domain"
+type = "layers"
+layers = [
+    "api",
+    "application",
+    "infrastructure",
+    "domain",
+]
+containers = ["modules.platform"]
+
+[[tool.importlinter.contracts]]
+name = "Inner layers never import infrastructure (composition root only)"
+type = "forbidden"
+source_modules = [
+    "modules.platform.api",
+    "modules.platform.application",
+    "modules.platform.domain",
+]
+forbidden_modules = ["modules.platform.infrastructure"]
+
+[[tool.importlinter.contracts]]
+name = "Domain purity: no framework or provider dependencies"
+type = "forbidden"
+source_modules = ["modules.platform.domain"]
+forbidden_modules = [
+    "fastapi",
+    "starlette",
+    "supabase",
+    "sqlalchemy",
+    "surrealdb",
+]
+include_external_packages = true
+
+[[tool.importlinter.contracts]]
+name = "Business modules are independent of each other"
+type = "independence"
+modules = [
+    "modules.research",
+    "modules.analytics",
+    "modules.competitor_intelligence",
+    "modules.intelligence_chat",
+    "modules.monitoring",
+]
