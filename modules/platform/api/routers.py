@@ -49,6 +49,7 @@ from modules.platform.application.services import (
     tag_service,
     team_service,
 )
+from modules.platform.domain.entities import Project, ProjectTag
 
 F = TypeVar("F", bound=Callable[..., Awaitable[Any]])
 
@@ -493,7 +494,7 @@ def build_projects_router() -> APIRouter:
     return router
 
 
-def _project_response(project) -> ProjectResponse:
+def _project_response(project: Project) -> ProjectResponse:
     return ProjectResponse(
         id=project.id,
         organization_id=project.organization_id,
@@ -578,7 +579,7 @@ def build_tags_router() -> APIRouter:
     return router
 
 
-def _tag_response(tag) -> ProjectTagResponse:
+def _tag_response(tag: ProjectTag) -> ProjectTagResponse:
     return ProjectTagResponse(
         id=tag.id,
         organization_id=tag.organization_id,

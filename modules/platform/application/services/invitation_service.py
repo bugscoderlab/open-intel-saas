@@ -230,22 +230,38 @@ async def accept_invitation(
                 role=invitation.role,
             )
         )
-    elif invitation.scope == "team":
-        await unit.team_memberships.add(
-            TeamMembership(
-                team_id=invitation.team_id,  # type: ignore[arg-type]
-                app_user_id=principal.app_user_id,
-                role=invitation.role,
-            )
-        )
     else:
-        await unit.project_memberships.add(
-            ProjectMembership(
-                project_id=invitation.project_id,  # type: ignore[arg-type]
-                app_user_id=principal.app_user_id,
-                role=invitation.role,
-            )
+        # A team/project invitation can reach a stranger who holds no org
+        # membership yet. Every principal must be an org member (role
+        # resolution short-circuits without it, and so does RLS), so
+        # landing them as plain member first is part of accepting.
+        existing = await unit.memberships.get(
+            invitation.organization_id, principal.app_user_id
         )
+        if existing is None:
+            await unit.memberships.add(
+                Membership(
+                    organization_id=invitation.organization_id,
+                    app_user_id=principal.app_user_id,
+                    role="member",
+                )
+            )
+        if invitation.scope == "team":
+            await unit.team_memberships.add(
+                TeamMembership(
+                    team_id=invitation.team_id,  # type: ignore[arg-type]
+                    app_user_id=principal.app_user_id,
+                    role=invitation.role,
+                )
+            )
+        else:
+            await unit.project_memberships.add(
+                ProjectMembership(
+                    project_id=invitation.project_id,  # type: ignore[arg-type]
+                    app_user_id=principal.app_user_id,
+                    role=invitation.role,
+                )
+            )
     await unit.audit.record(
         AuditEntry(
             actor_id=principal.app_user_id,

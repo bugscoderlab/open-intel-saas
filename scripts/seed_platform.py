@@ -14,8 +14,12 @@ seed-a1 and try to reach Seed Org Beta's data (and vice versa).
 from __future__ import annotations
 
 import asyncio
+import sys
 from dataclasses import dataclass
+from pathlib import Path
 from uuid import UUID
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import httpx
 from dotenv import load_dotenv
@@ -32,6 +36,7 @@ from modules.platform.application.services.authorization import (
 )
 from modules.platform.domain.identity import Principal
 from modules.platform.infrastructure.db import create_engine
+from modules.platform.infrastructure.email import RecordingEmailProvider
 from modules.platform.infrastructure.settings import Settings
 from modules.platform.infrastructure.unit_of_work import SqlPlatformUnit
 
@@ -42,10 +47,6 @@ SEED_DOMAIN = "seed.open-intel.dev"
 class SeedUser:
     key: str
     email: str
-
-    @property
-    def principal_email(self) -> str:
-        return self.email
 
 
 USERS = {
@@ -115,7 +116,7 @@ def _principal(app_user_id: str, email: str) -> Principal:
 
 async def _ensure_organization(
     unit: SqlPlatformUnit, principal: Principal, name: str
-):
+) -> UUID:
     """Return the organization id, creating it (owner: principal) when the
     principal does not already belong to an organization of that name."""
     existing = await organization_service.list_organizations(unit, principal)
@@ -130,7 +131,7 @@ async def _ensure_organization(
 
 async def _invite_and_accept(
     unit: SqlPlatformUnit,
-    email_provider,
+    email_provider: RecordingEmailProvider,
     inviter: Principal,
     invitee: Principal,
     *,
@@ -160,18 +161,8 @@ async def _invite_and_accept(
     )
 
 
-def _last_sent_token(email_provider) -> str:
+def _last_sent_token(email_provider: RecordingEmailProvider) -> str:
     return email_provider.sent[-1]["accept_url"].rsplit("token=", 1)[1]
-
-
-class _CollectingEmail:
-    """Seed inviter: captures the raw token instead of sending email."""
-
-    def __init__(self) -> None:
-        self.sent: list[dict] = []
-
-    async def send_invitation(self, **kwargs) -> None:
-        self.sent.append(kwargs)
 
 
 async def seed(settings: Settings) -> list[str]:
@@ -186,7 +177,7 @@ async def seed(settings: Settings) -> list[str]:
     engine = create_engine(settings.database_dsn)
     created: list[str] = []
     try:
-        email = _CollectingEmail()
+        email = RecordingEmailProvider()
         async with SqlPlatformUnit(engine) as unit:
             a1 = _principal(app_user_ids["a1"], USERS["a1"].email)
             a2 = _principal(app_user_ids["a2"], USERS["a2"].email)
@@ -259,7 +250,7 @@ async def seed(settings: Settings) -> list[str]:
 
 async def _maybe_invite_org(
     unit: SqlPlatformUnit,
-    email: _CollectingEmail,
+    email: RecordingEmailProvider,
     inviter: Principal,
     invitee: Principal,
     organization_id: UUID,

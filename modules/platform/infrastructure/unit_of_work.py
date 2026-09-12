@@ -1,5 +1,7 @@
 """SQLAlchemy unit of work: all repositories on one session/transaction."""
 
+from types import TracebackType
+
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
 from modules.platform.domain.unit_of_work import (
@@ -63,7 +65,12 @@ class SqlPlatformUnit:
         self.outbox: Outbox = SqlOutbox(self._session)
         return self
 
-    async def __aexit__(self, exc_type, exc, tb) -> None:
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        tb: TracebackType | None,
+    ) -> None:
         if self._session is not None:
             if exc_type is not None and self._session.is_active:
                 await self._session.rollback()

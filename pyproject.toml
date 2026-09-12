@@ -109,12 +109,14 @@ root_package = "modules"
 include_external_packages = true
 
 [[tool.importlinter.contracts]]
-name = "Platform module layering: api → application → infrastructure → domain"
+name = "Platform module layering: api → application → domain (infrastructure implements domain ports)"
 type = "layers"
+# Spec §14.2: api → application → domain; infrastructure implements the
+# domain ports and is reached only through them (composition root wires it).
+# The forbidden contract below backs the "never import infrastructure" half.
 layers = [
     "api",
     "application",
-    "infrastructure",
     "domain",
 ]
 containers = ["modules.platform"]

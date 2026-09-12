@@ -125,6 +125,24 @@ async def test_register_create_invite_accept_team_project_tags_isolation(
         )
         assert created.status_code == 201, created.text
 
+    # 6b. Full CRUD round-trip: create, update, delete a scratch tag.
+    scratch = (await api.post(
+        f"/projects/{project_id}/tags",
+        json={"name": "scratch"},
+        headers=auth_headers(founder),
+    )).json()
+    renamed = await api.patch(
+        f"/projects/{project_id}/tags/{scratch['id']}",
+        json={"name": "scratch-v2"},
+        headers=auth_headers(founder),
+    )
+    assert renamed.status_code == 200, renamed.text
+    assert renamed.json()["name"] == "scratch-v2"
+    assert (await api.delete(
+        f"/projects/{project_id}/tags/{scratch['id']}",
+        headers=auth_headers(founder),
+    )).status_code == 204
+
     # 7. Both members see the tags; the outsider cannot even retrieve
     #    the project.
     for user in (founder, invitee):

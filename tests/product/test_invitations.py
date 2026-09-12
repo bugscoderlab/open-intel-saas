@@ -290,3 +290,40 @@ async def test_already_member_cannot_be_reinvited(
         headers=auth_headers(owner),
     )
     assert response.status_code == 409
+
+
+async def test_stranger_accepting_team_invite_lands_in_the_organization(
+    api, owner: TestUser, org: str, user_factory
+) -> None:
+    """A team invite can reach someone with no org membership. Accepting
+    must also make them an org member — otherwise role resolution and RLS
+    leave them locked out of everything (code-review finding)."""
+    team = await api.post(
+        f"/organizations/{org}/teams", json={"name": "Direct Team"},
+        headers=auth_headers(owner),
+    )
+    assert team.status_code == 201, team.text
+    stranger = await user_factory("direct-stranger")
+    token = await _invite(
+        api, owner, org, stranger.email, scope="team", role="member",
+        team_id=team.json()["id"],
+    )
+    accepted = await api.post(
+        "/invitations/accept", json={"token": token},
+        headers=auth_headers(stranger),
+    )
+    assert accepted.status_code == 204, accepted.text
+
+    orgs = (await api.get("/organizations", headers=auth_headers(stranger))).json()
+    assert [o["id"] for o in orgs] == [org]
+    members = (await api.get(
+        f"/organizations/{org}/members", headers=auth_headers(owner)
+    )).json()
+    assert any(
+        m["app_user_id"] == stranger.auth_user_id and m["role"] == "member"
+        for m in members
+    )
+    team_members = (await api.get(
+        f"/teams/{team.json()['id']}/members", headers=auth_headers(owner)
+    )).json()
+    assert any(m["app_user_id"] == stranger.auth_user_id for m in team_members)

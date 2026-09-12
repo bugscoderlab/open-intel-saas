@@ -13,6 +13,7 @@ from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
 from sqlalchemy import delete, func, insert, select, update
+from sqlalchemy.engine import Row
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from modules.platform.domain.entities import (
@@ -31,11 +32,11 @@ from modules.platform.domain.entities import (
 from modules.platform.infrastructure import db as tables
 
 
-def _row_to_org(row) -> Organization:
+def _row_to_org(row: Row) -> Organization:
     return Organization(id=row.id, name=row.name, created_by=row.created_by)
 
 
-def _row_to_membership(row) -> Membership:
+def _row_to_membership(row: Row) -> Membership:
     return Membership(
         organization_id=row.organization_id,
         app_user_id=row.app_user_id,
@@ -43,7 +44,7 @@ def _row_to_membership(row) -> Membership:
     )
 
 
-def _row_to_team(row) -> Team:
+def _row_to_team(row: Row) -> Team:
     return Team(
         id=row.id,
         organization_id=row.organization_id,
@@ -52,13 +53,13 @@ def _row_to_team(row) -> Team:
     )
 
 
-def _row_to_team_membership(row) -> TeamMembership:
+def _row_to_team_membership(row: Row) -> TeamMembership:
     return TeamMembership(
         team_id=row.team_id, app_user_id=row.app_user_id, role=row.role
     )
 
 
-def _row_to_project(row) -> Project:
+def _row_to_project(row: Row) -> Project:
     return Project(
         id=row.id,
         organization_id=row.organization_id,
@@ -69,13 +70,13 @@ def _row_to_project(row) -> Project:
     )
 
 
-def _row_to_project_membership(row) -> ProjectMembership:
+def _row_to_project_membership(row: Row) -> ProjectMembership:
     return ProjectMembership(
         project_id=row.project_id, app_user_id=row.app_user_id, role=row.role
     )
 
 
-def _row_to_tag(row) -> ProjectTag:
+def _row_to_tag(row: Row) -> ProjectTag:
     return ProjectTag(
         id=row.id,
         organization_id=row.organization_id,
@@ -86,7 +87,7 @@ def _row_to_tag(row) -> ProjectTag:
     )
 
 
-def _row_to_invitation(row) -> Invitation:
+def _row_to_invitation(row: Row) -> Invitation:
     return Invitation(
         id=row.id,
         organization_id=row.organization_id,
