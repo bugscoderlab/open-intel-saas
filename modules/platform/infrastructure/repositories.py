@@ -12,7 +12,7 @@ exactly why these filters are load-bearing, not decorative (plan §8.2).
 from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import delete, func, select, update
+from sqlalchemy import delete, func, insert, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from modules.platform.domain.entities import (
@@ -107,7 +107,10 @@ class SqlAppUsers:
         self._session = session
 
     async def get_by_id(self, app_user_id: UUID) -> AppUser | None:
-        row = await self._session.get(tables.app_users, app_user_id)
+        result = await self._session.execute(
+            select(tables.app_users).where(tables.app_users.c.id == app_user_id)
+        )
+        row = result.first()
         if row is None:
             return None
         return AppUser(
@@ -131,8 +134,8 @@ class SqlOrganizations:
         self._session = session
 
     async def create(self, organization: Organization) -> None:
-        self._session.add(
-            tables.organizations(
+        await self._session.execute(
+            insert(tables.organizations).values(
                 id=organization.id,
                 name=organization.name,
                 created_by=organization.created_by,
@@ -140,7 +143,12 @@ class SqlOrganizations:
         )
 
     async def get(self, organization_id: UUID) -> Organization | None:
-        row = await self._session.get(tables.organizations, organization_id)
+        result = await self._session.execute(
+            select(tables.organizations).where(
+                tables.organizations.c.id == organization_id
+            )
+        )
+        row = result.first()
         return _row_to_org(row) if row else None
 
     async def update(self, organization: Organization) -> None:
@@ -194,8 +202,8 @@ class SqlMemberships:
         return [_row_to_membership(row) for row in result.all()]
 
     async def add(self, membership: Membership) -> None:
-        self._session.add(
-            tables.organization_members(
+        await self._session.execute(
+            insert(tables.organization_members).values(
                 organization_id=membership.organization_id,
                 app_user_id=membership.app_user_id,
                 role=membership.role,
@@ -239,8 +247,8 @@ class SqlTeams:
         self._session = session
 
     async def create(self, team: Team) -> None:
-        self._session.add(
-            tables.teams(
+        await self._session.execute(
+            insert(tables.teams).values(
                 id=team.id,
                 organization_id=team.organization_id,
                 name=team.name,
@@ -249,7 +257,10 @@ class SqlTeams:
         )
 
     async def get(self, team_id: UUID) -> Team | None:
-        row = await self._session.get(tables.teams, team_id)
+        result = await self._session.execute(
+            select(tables.teams).where(tables.teams.c.id == team_id)
+        )
+        row = result.first()
         return _row_to_team(row) if row else None
 
     async def update(self, team: Team) -> None:
@@ -296,8 +307,8 @@ class SqlTeamMemberships:
         return [_row_to_team_membership(row) for row in result.all()]
 
     async def add(self, membership: TeamMembership) -> None:
-        self._session.add(
-            tables.team_members(
+        await self._session.execute(
+            insert(tables.team_members).values(
                 team_id=membership.team_id,
                 app_user_id=membership.app_user_id,
                 role=membership.role,
@@ -318,8 +329,8 @@ class SqlProjects:
         self._session = session
 
     async def create(self, project: Project) -> None:
-        self._session.add(
-            tables.projects(
+        await self._session.execute(
+            insert(tables.projects).values(
                 id=project.id,
                 organization_id=project.organization_id,
                 owning_team_id=project.owning_team_id,
@@ -330,7 +341,10 @@ class SqlProjects:
         )
 
     async def get(self, project_id: UUID) -> Project | None:
-        row = await self._session.get(tables.projects, project_id)
+        result = await self._session.execute(
+            select(tables.projects).where(tables.projects.c.id == project_id)
+        )
+        row = result.first()
         return _row_to_project(row) if row else None
 
     async def update(self, project: Project) -> None:
@@ -383,8 +397,8 @@ class SqlProjectMemberships:
         return [_row_to_project_membership(row) for row in result.all()]
 
     async def add(self, membership: ProjectMembership) -> None:
-        self._session.add(
-            tables.project_members(
+        await self._session.execute(
+            insert(tables.project_members).values(
                 project_id=membership.project_id,
                 app_user_id=membership.app_user_id,
                 role=membership.role,
@@ -407,8 +421,8 @@ class SqlTags:
         self._session = session
 
     async def create(self, tag: ProjectTag) -> None:
-        self._session.add(
-            tables.project_tags(
+        await self._session.execute(
+            insert(tables.project_tags).values(
                 id=tag.id,
                 organization_id=tag.organization_id,
                 project_id=tag.project_id,
@@ -472,8 +486,8 @@ class SqlInvitations:
         self._session = session
 
     async def create(self, invitation: Invitation) -> None:
-        self._session.add(
-            tables.invitations(
+        await self._session.execute(
+            insert(tables.invitations).values(
                 id=invitation.id,
                 organization_id=invitation.organization_id,
                 scope=invitation.scope,
@@ -516,8 +530,8 @@ class SqlAuditLog:
         self._session = session
 
     async def record(self, entry: AuditEntry) -> None:
-        self._session.add(
-            tables.audit_log(
+        await self._session.execute(
+            insert(tables.audit_log).values(
                 actor_id=entry.actor_id,
                 action=entry.action,
                 target_type=entry.target_type,
@@ -533,8 +547,8 @@ class SqlOutbox:
         self._session = session
 
     async def add(self, event: OutboxEvent) -> None:
-        self._session.add(
-            tables.outbox_events(
+        await self._session.execute(
+            insert(tables.outbox_events).values(
                 id=uuid4(), event_type=event.event_type, payload=event.payload
             )
         )
