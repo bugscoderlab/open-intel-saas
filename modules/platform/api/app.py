@@ -14,12 +14,10 @@ from modules.platform.domain.models import ModuleDefinition
 
 def create_app(
     *,
-    config: ModuleConfig | None = None,
-    registry: list[ModuleDefinition] | None = None,
+    config: ModuleConfig,
+    registry: list[ModuleDefinition],
 ) -> FastAPI:
     """Assemble the API. Fails to start if the platform module is absent."""
-    if config is None or registry is None:
-        raise TypeError("config and registry must be provided by the composition root")
     try:
         states = build_module_states(registry, config.disabled_modules)
     except ValueError as exc:

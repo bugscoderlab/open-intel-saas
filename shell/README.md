@@ -20,7 +20,7 @@ npm run lint     # eslint, incl. the feature-boundary rules (plan §14.1)
 
 ## Feature boundaries
 
-`src/features/*` folders may not import each other's internals
-(`eslint-plugin-boundaries`, configured in `eslint.config.mjs`). The shared
-base is `features/platform`; anything cross-feature must go through a
-declared contract, so it fails lint until then.
+`src/features/*` folders may not import each other at all
+(`eslint-plugin-boundaries`, configured in `eslint.config.mjs`) — plan §14.1
+makes feature folders independent, and shared code must live outside
+`src/features` (e.g. `src/lib`) when the need actually arises.

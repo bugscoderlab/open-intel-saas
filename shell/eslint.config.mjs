@@ -23,9 +23,8 @@ export default [
       },
     },
     rules: {
-      // Plan §14.1: feature folders may not import each other's internals.
-      // The shared base is `features/platform`; cross-feature imports must
-      // go through a declared contract later, so they fail lint today.
+      // Plan §14.1: feature folders are independent — no feature may import
+      // another. Shared code lives outside src/features when needed.
       "boundaries/element-types": [
         "error",
         {

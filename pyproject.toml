@@ -137,7 +137,6 @@ forbidden_modules = [
     "sqlalchemy",
     "surrealdb",
 ]
-include_external_packages = true
 
 [[tool.importlinter.contracts]]
 name = "Business modules are independent of each other"
