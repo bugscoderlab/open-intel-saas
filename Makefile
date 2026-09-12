@@ -228,3 +228,20 @@ clean-cache:
 	@find . -name "*.pyo" -type f -delete 2>/dev/null || true
 	@find . -name "*.pyd" -type f -delete 2>/dev/null || true
 	@echo "✅ Cache directories cleaned!"
+# =============================================================================
+# Open Intel product slice (platform foundation)
+# =============================================================================
+
+# Apply pending platform migrations to the managed Supabase project.
+migrate:
+	@uv run python -m modules.platform.infrastructure.migrations
+
+# Seed two organizations x two users each (idempotent).
+seed:
+	@uv run python scripts/seed_platform.py
+
+# Product checks: lint, architecture contracts, product tests.
+product-check:
+	@uv run ruff check modules tests/product serve.py
+	@uv run lint-imports
+	@uv run pytest tests/product -q

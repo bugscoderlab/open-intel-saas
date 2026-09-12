@@ -177,7 +177,7 @@ async def test_accept_with_mismatched_session_email_is_rejected(
     assert response.status_code == 403
     # The invitation remains usable by the real invitee afterwards.
     invitee = await user_factory("real")
-    conn = None
+
     # (re-point the invitation at the real invitee's email via a fresh one)
     token2 = await _invite(api, owner, org, invitee.email)
     assert (await api.post(

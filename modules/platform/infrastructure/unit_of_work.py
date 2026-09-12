@@ -2,6 +2,19 @@
 
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
+from modules.platform.domain.unit_of_work import (
+    AppUsers,
+    AuditLog,
+    Invitations,
+    Memberships,
+    Organizations,
+    Outbox,
+    ProjectMemberships,
+    Projects,
+    Tags,
+    TeamMemberships,
+    Teams,
+)
 from modules.platform.infrastructure.db import create_session
 from modules.platform.infrastructure.repositories import (
     SqlAppUsers,
@@ -35,17 +48,19 @@ class SqlPlatformUnit:
     async def __aenter__(self) -> "SqlPlatformUnit":
         self._session = create_session(self._engine)
         await self._session.begin()
-        self.app_users = SqlAppUsers(self._session)
-        self.organizations = SqlOrganizations(self._session)
-        self.memberships = SqlMemberships(self._session)
-        self.teams = SqlTeams(self._session)
-        self.team_memberships = SqlTeamMemberships(self._session)
-        self.projects = SqlProjects(self._session)
-        self.project_memberships = SqlProjectMemberships(self._session)
-        self.tags = SqlTags(self._session)
-        self.invitations = SqlInvitations(self._session)
-        self.audit = SqlAuditLog(self._session)
-        self.outbox = SqlOutbox(self._session)
+        self.app_users: AppUsers = SqlAppUsers(self._session)
+        self.organizations: Organizations = SqlOrganizations(self._session)
+        self.memberships: Memberships = SqlMemberships(self._session)
+        self.teams: Teams = SqlTeams(self._session)
+        self.team_memberships: TeamMemberships = SqlTeamMemberships(self._session)
+        self.projects: Projects = SqlProjects(self._session)
+        self.project_memberships: ProjectMemberships = SqlProjectMemberships(
+            self._session
+        )
+        self.tags: Tags = SqlTags(self._session)
+        self.invitations: Invitations = SqlInvitations(self._session)
+        self.audit: AuditLog = SqlAuditLog(self._session)
+        self.outbox: Outbox = SqlOutbox(self._session)
         return self
 
     async def __aexit__(self, exc_type, exc, tb) -> None:

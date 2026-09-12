@@ -280,12 +280,11 @@ async def test_team_and_project_mutations_write_audit(
     api, owner: TestUser, org: str, settings
 ) -> None:
     team_id = await _create_team(api, owner, org)
-    response = await api.post(
+    await api.post(
         f"/organizations/{org}/projects",
         json={"name": "Audited", "owning_team_id": team_id},
         headers=auth_headers(owner),
     )
-    project_id = response.json()["id"]
     conn = await asyncpg.connect(settings.database_dsn_asyncpg, timeout=30)
     try:
         actions = [
