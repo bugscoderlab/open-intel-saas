@@ -46,6 +46,9 @@ dependencies = [
     "numpy>=2.4.1",
     "pycountry>=26.2.16",
     "babel>=2.18.0",
+    "sqlalchemy[asyncio]>=2",
+    "asyncpg>=0.29",
+    "pyjwt[crypto]>=2.9",
 ]
 
 [tool.setuptools]

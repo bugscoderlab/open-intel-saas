@@ -44,7 +44,7 @@ def test_app_refuses_to_start_without_platform_module(tmp_path: Path) -> None:
     empty_root.mkdir()
     (empty_root / "research").mkdir()
     (empty_root / "research" / "module.toml").write_text(
-        "name = \"research\"\ntitle = \"Research\"\n"
+        'name = "research"\ntitle = "Research"\n'
     )
     config = Settings(disabled_modules=frozenset())
     registry = discover_modules(empty_root)
