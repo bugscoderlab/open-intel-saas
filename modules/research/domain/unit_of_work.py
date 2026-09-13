@@ -12,6 +12,7 @@ from uuid import UUID
 
 from modules.platform.domain.unit_of_work import PlatformUnit
 from modules.research.domain.entities import (
+    Note,
     Notebook,
     SearchHit,
     Source,
@@ -97,6 +98,23 @@ class SourceFiles(Protocol):
     ) -> SourceFile | None: ...
 
 
+class Notes(Protocol):
+    """Note repository — the tenant scope plus the owning notebook are
+    explicit on every query (ticket #30)."""
+
+    async def create(self, note: Note) -> None: ...
+    async def get(
+        self, organization_id: UUID, project_id: UUID, notebook_id: UUID, note_id: UUID
+    ) -> Note | None: ...
+    async def update(self, note: Note) -> None: ...
+    async def delete(
+        self, organization_id: UUID, project_id: UUID, notebook_id: UUID, note_id: UUID
+    ) -> None: ...
+    async def list_for_notebook(
+        self, organization_id: UUID, project_id: UUID, notebook_id: UUID
+    ) -> list[Note]: ...
+
+
 class Search(Protocol):
     """Tenant-scoped search (ticket #25). The scope is a mandatory query
     predicate on every search — authorization happens BEFORE retrieval,
@@ -124,6 +142,7 @@ class ResearchUnit(PlatformUnit, Protocol):
     """One transaction worth of platform + research repositories."""
 
     notebooks: Notebooks
+    notes: Notes
     sources: Sources
     source_chunks: SourceChunks
     source_files: SourceFiles

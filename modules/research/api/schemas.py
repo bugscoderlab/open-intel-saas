@@ -58,3 +58,24 @@ class SourceFileDownloadResponse(BaseModel):
     at request time, never persisted."""
 
     url: str
+
+
+class NoteCreateRequest(BaseModel):
+    title: str
+    content: str = ""
+
+
+class NoteUpdateRequest(BaseModel):
+    title: str | None = None
+    content: str | None = None
+
+
+class NoteResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    organization_id: UUID
+    project_id: UUID
+    notebook_id: UUID
+    title: str
+    content: str

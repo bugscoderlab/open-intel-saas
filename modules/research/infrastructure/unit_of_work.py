@@ -11,6 +11,7 @@ plan §14.3).
 from modules.platform.infrastructure.unit_of_work import SqlPlatformUnit
 from modules.research.domain.unit_of_work import (
     Notebooks,
+    Notes,
     Search,
     SourceChunks,
     SourceFiles,
@@ -18,6 +19,7 @@ from modules.research.domain.unit_of_work import (
 )
 from modules.research.infrastructure.repositories import (
     SqlNotebooks,
+    SqlNotes,
     SqlSearch,
     SqlSourceChunks,
     SqlSourceFiles,
@@ -33,6 +35,7 @@ class SqlResearchUnit(SqlPlatformUnit):
         await super().__aenter__()
         assert self._session is not None
         self.notebooks: Notebooks = SqlNotebooks(self._session)
+        self.notes: Notes = SqlNotes(self._session)
         self.sources: Sources = SqlSources(self._session)
         self.source_chunks: SourceChunks = SqlSourceChunks(self._session)
         self.source_files: SourceFiles = SqlSourceFiles(self._session)

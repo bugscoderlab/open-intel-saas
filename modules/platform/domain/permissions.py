@@ -57,6 +57,12 @@ class Permission:
     SEARCH_TEXT = "search.text"
     SEARCH_VECTOR = "search.vector"
 
+    # Note (research module, spec #26, ticket #30)
+    NOTE_CREATE = "note.create"
+    NOTE_READ = "note.read"
+    NOTE_UPDATE = "note.update"
+    NOTE_DELETE = "note.delete"
+
 
 ALL_PERMISSIONS = frozenset(
     value for name, value in vars(Permission).items() if name.isupper()
@@ -116,6 +122,15 @@ SEARCH_PERMISSIONS = frozenset(
     }
 )
 
+NOTE_PERMISSIONS = frozenset(
+    {
+        Permission.NOTE_CREATE,
+        Permission.NOTE_READ,
+        Permission.NOTE_UPDATE,
+        Permission.NOTE_DELETE,
+    }
+)
+
 ORG_BASE_PERMISSIONS = frozenset(
     {
         Permission.ORG_READ,
@@ -161,6 +176,7 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
         | NOTEBOOK_PERMISSIONS
         | SOURCE_PERMISSIONS
         | SEARCH_PERMISSIONS
+        | NOTE_PERMISSIONS
     ),
     Role.ORG_OWNER: frozenset(
         ORG_BASE_PERMISSIONS
@@ -170,6 +186,7 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
         | NOTEBOOK_PERMISSIONS
         | SOURCE_PERMISSIONS
         | SEARCH_PERMISSIONS
+        | NOTE_PERMISSIONS
         | {Permission.ORG_DELETE}
     ),
     Role.ORG_MEMBER: frozenset(
@@ -187,6 +204,7 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
         | NOTEBOOK_PERMISSIONS
         | SOURCE_PERMISSIONS
         | SEARCH_PERMISSIONS
+        | NOTE_PERMISSIONS
     ),
     Role.TEAM_MEMBER: frozenset(
         {
@@ -197,6 +215,7 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
             Permission.SOURCE_READ,
             Permission.SEARCH_TEXT,
             Permission.SEARCH_VECTOR,
+            Permission.NOTE_READ,
         }
     ),
     Role.PROJECT_EDITOR: frozenset(
@@ -205,6 +224,7 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
         | NOTEBOOK_PERMISSIONS
         | SOURCE_PERMISSIONS
         | SEARCH_PERMISSIONS
+        | NOTE_PERMISSIONS
     ),
     Role.PROJECT_VIEWER: frozenset(
         {
@@ -214,6 +234,7 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
             Permission.SOURCE_READ,
             Permission.SEARCH_TEXT,
             Permission.SEARCH_VECTOR,
+            Permission.NOTE_READ,
         }
     ),
 }

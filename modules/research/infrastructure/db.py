@@ -116,3 +116,24 @@ source_files = Table(
     Index("source_files_source_id_idx", "source_id"),
     schema="research",
 )
+
+# Mirrors migrations/0014_research_notes.sql (the source of truth).
+notes = Table(
+    "notes",
+    metadata,
+    Column("id", SAUUID, primary_key=True),
+    Column("organization_id", SAUUID, ForeignKey("organizations.id"), nullable=False),
+    Column("project_id", SAUUID, ForeignKey("projects.id"), nullable=False),
+    Column(
+        "notebook_id", SAUUID, ForeignKey("research.notebooks.id"), nullable=False
+    ),
+    Column("title", Text, nullable=False),
+    Column("content", Text, nullable=False),
+    Column("created_by", SAUUID, ForeignKey("app_users.id"), nullable=False),
+    Column("created_at", DateTime(timezone=True), server_default=func.now()),
+    Column("updated_at", DateTime(timezone=True), server_default=func.now()),
+    Index("notes_project_id_idx", "project_id"),
+    Index("notes_organization_id_idx", "organization_id"),
+    Index("notes_notebook_id_idx", "notebook_id"),
+    schema="research",
+)

@@ -48,6 +48,10 @@ Anything ingested for study: file, URL, pasted text, audio, video, spreadsheet, 
 **Notebook**:
 The research container inherited from Open Notebook. Lives inside a Project.
 
+**Note**:
+A plain title + content text belonging to a Notebook (upstream semantics), tenant-scoped like every research row. Deliberately named to avoid collision with the Phase 0–1 Project tag entity.
+_Avoid_: Memo (use Project tag for the trivial tenant-owned CRUD pattern)
+
 ### Competitor intelligence
 
 **Market**:

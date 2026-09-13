@@ -20,6 +20,9 @@ from modules.research.api.schemas import (
     NotebookCreateRequest,
     NotebookResponse,
     NotebookUpdateRequest,
+    NoteCreateRequest,
+    NoteResponse,
+    NoteUpdateRequest,
     SearchHitResponse,
     SourceCreateRequest,
     SourceFileDownloadResponse,
@@ -27,10 +30,11 @@ from modules.research.api.schemas import (
 )
 from modules.research.application.services import (
     notebook_service,
+    notes_service,
     search_service,
     source_service,
 )
-from modules.research.domain.entities import Notebook, SearchHit, Source
+from modules.research.domain.entities import Note, Notebook, SearchHit, Source
 
 
 def build_notebooks_router() -> APIRouter:
@@ -120,6 +124,137 @@ def _notebook_response(notebook: Notebook) -> NotebookResponse:
         name=notebook.name,
         description=notebook.description,
         archived=notebook.archived,
+    )
+
+
+def build_notes_router() -> APIRouter:
+    """Notes CRUD (ticket #30): scoped to the owning notebook; the
+    permission matrix answers every authorization question."""
+    router = APIRouter(tags=["notes"])
+
+    @router.post(
+        "/projects/{project_id}/notebooks/{notebook_id}/notes",
+        response_model=NoteResponse,
+        status_code=201,
+    )
+    @endpoint
+    async def create_note(
+        project_id: UUID,
+        notebook_id: UUID,
+        body: NoteCreateRequest,
+        unit: ResearchUnitDep,
+        principal: PrincipalDep,
+        authz: AuthzDep,
+    ) -> NoteResponse:
+        note = await notes_service.create_note(
+            unit,
+            authz,
+            principal,
+            project_id=project_id,
+            notebook_id=notebook_id,
+            title=body.title,
+            content=body.content,
+        )
+        return _note_response(note)
+
+    @router.get(
+        "/projects/{project_id}/notebooks/{notebook_id}/notes",
+        response_model=list[NoteResponse],
+    )
+    @endpoint
+    async def list_notes(
+        project_id: UUID,
+        notebook_id: UUID,
+        unit: ResearchUnitDep,
+        principal: PrincipalDep,
+        authz: AuthzDep,
+    ) -> list[NoteResponse]:
+        notes = await notes_service.list_notes(
+            unit, authz, principal, project_id=project_id, notebook_id=notebook_id
+        )
+        return [_note_response(n) for n in notes]
+
+    @router.get(
+        "/projects/{project_id}/notebooks/{notebook_id}/notes/{note_id}",
+        response_model=NoteResponse,
+    )
+    @endpoint
+    async def get_note(
+        project_id: UUID,
+        notebook_id: UUID,
+        note_id: UUID,
+        unit: ResearchUnitDep,
+        principal: PrincipalDep,
+        authz: AuthzDep,
+    ) -> NoteResponse:
+        note = await notes_service.get_note(
+            unit,
+            authz,
+            principal,
+            project_id=project_id,
+            notebook_id=notebook_id,
+            note_id=note_id,
+        )
+        return _note_response(note)
+
+    @router.patch(
+        "/projects/{project_id}/notebooks/{notebook_id}/notes/{note_id}",
+        response_model=NoteResponse,
+    )
+    @endpoint
+    async def update_note(
+        project_id: UUID,
+        notebook_id: UUID,
+        note_id: UUID,
+        body: NoteUpdateRequest,
+        unit: ResearchUnitDep,
+        principal: PrincipalDep,
+        authz: AuthzDep,
+    ) -> NoteResponse:
+        note = await notes_service.update_note(
+            unit,
+            authz,
+            principal,
+            project_id=project_id,
+            notebook_id=notebook_id,
+            note_id=note_id,
+            title=body.title,
+            content=body.content,
+        )
+        return _note_response(note)
+
+    @router.delete(
+        "/projects/{project_id}/notebooks/{notebook_id}/notes/{note_id}", status_code=204
+    )
+    @endpoint
+    async def delete_note(
+        project_id: UUID,
+        notebook_id: UUID,
+        note_id: UUID,
+        unit: ResearchUnitDep,
+        principal: PrincipalDep,
+        authz: AuthzDep,
+    ) -> None:
+        await notes_service.delete_note(
+            unit,
+            authz,
+            principal,
+            project_id=project_id,
+            notebook_id=notebook_id,
+            note_id=note_id,
+        )
+
+    return router
+
+
+def _note_response(note: Note) -> NoteResponse:
+    return NoteResponse(
+        id=note.id,
+        organization_id=note.organization_id,
+        project_id=note.project_id,
+        notebook_id=note.notebook_id,
+        title=note.title,
+        content=note.content,
     )
 
 
@@ -330,6 +465,7 @@ def build_research_router() -> APIRouter:
     composition root (serve.py) and the test seam (conftest)."""
     router = APIRouter()
     router.include_router(build_notebooks_router())
+    router.include_router(build_notes_router())
     router.include_router(build_sources_router())
     router.include_router(build_search_router())
     return router

@@ -15,6 +15,7 @@ from sqlalchemy.engine import Row
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from modules.research.domain.entities import (
+    Note,
     Notebook,
     SearchHit,
     Source,
@@ -278,6 +279,107 @@ class SqlSourceChunks:
             .order_by(tables.source_chunks.c.chunk_index)
         )
         return [_row_to_chunk(row) for row in result.all()]
+
+
+# --- Notes (ticket #30) -----------------------------------------------------
+
+
+def _row_to_note(row: Row) -> Note:
+    return Note(
+        id=row.id,
+        organization_id=row.organization_id,
+        project_id=row.project_id,
+        notebook_id=row.notebook_id,
+        title=row.title,
+        content=row.content,
+        created_by=row.created_by,
+    )
+
+
+class SqlNotes:
+    """Note repository: the tenant scope and the owning notebook are
+    explicit on every query — a note from another notebook in the same
+    project is still not found."""
+
+    def __init__(self, session: AsyncSession) -> None:
+        self._session = session
+
+    async def create(self, note: Note) -> None:
+        await self._session.execute(
+            insert(tables.notes).values(
+                id=note.id,
+                organization_id=note.organization_id,
+                project_id=note.project_id,
+                notebook_id=note.notebook_id,
+                title=note.title,
+                content=note.content,
+                created_by=note.created_by,
+            )
+        )
+
+    async def get(
+        self,
+        organization_id: UUID,
+        project_id: UUID,
+        notebook_id: UUID,
+        note_id: UUID,
+    ) -> Note | None:
+        result = await self._session.execute(
+            select(tables.notes).where(
+                tables.notes.c.organization_id == organization_id,
+                tables.notes.c.project_id == project_id,
+                tables.notes.c.notebook_id == notebook_id,
+                tables.notes.c.id == note_id,
+            )
+        )
+        row = result.first()
+        return _row_to_note(row) if row else None
+
+    async def update(self, note: Note) -> None:
+        await self._session.execute(
+            update(tables.notes)
+            .where(
+                tables.notes.c.organization_id == note.organization_id,
+                tables.notes.c.project_id == note.project_id,
+                tables.notes.c.notebook_id == note.notebook_id,
+                tables.notes.c.id == note.id,
+            )
+            .values(
+                title=note.title,
+                content=note.content,
+                updated_at=datetime.now(UTC),
+            )
+        )
+
+    async def delete(
+        self,
+        organization_id: UUID,
+        project_id: UUID,
+        notebook_id: UUID,
+        note_id: UUID,
+    ) -> None:
+        await self._session.execute(
+            delete(tables.notes).where(
+                tables.notes.c.organization_id == organization_id,
+                tables.notes.c.project_id == project_id,
+                tables.notes.c.notebook_id == notebook_id,
+                tables.notes.c.id == note_id,
+            )
+        )
+
+    async def list_for_notebook(
+        self, organization_id: UUID, project_id: UUID, notebook_id: UUID
+    ) -> list[Note]:
+        result = await self._session.execute(
+            select(tables.notes)
+            .where(
+                tables.notes.c.organization_id == organization_id,
+                tables.notes.c.project_id == project_id,
+                tables.notes.c.notebook_id == notebook_id,
+            )
+            .order_by(tables.notes.c.created_at)
+        )
+        return [_row_to_note(row) for row in result.all()]
 
 
 # --- Source files (spec #26, ticket #28) ------------------------------------

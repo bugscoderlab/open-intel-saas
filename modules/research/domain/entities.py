@@ -83,6 +83,20 @@ class SourceChunk:
 
 
 @dataclass(frozen=True)
+class Note:
+    """A research Note (ticket #30): plain title + content text belonging
+    to a Notebook, tenant-scoped like every research row."""
+
+    id: UUID
+    organization_id: UUID
+    project_id: UUID
+    notebook_id: UUID
+    title: str
+    content: str
+    created_by: UUID
+
+
+@dataclass(frozen=True)
 class SourceFile:
     """The registry row for a stored object (spec #26, plan §9.3): what was
     stored, where, and how big. Carries the tenant scope itself; the
