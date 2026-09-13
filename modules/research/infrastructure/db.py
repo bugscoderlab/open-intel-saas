@@ -13,6 +13,7 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Index,
+    Integer,
     Table,
     Text,
     func,
@@ -39,5 +40,49 @@ notebooks = Table(
     Column("updated_at", DateTime(timezone=True), server_default=func.now()),
     Index("notebooks_project_id_idx", "project_id"),
     Index("notebooks_organization_id_idx", "organization_id"),
+    schema="research",
+)
+
+# Mirrors migrations/0008_research_sources.sql (the source of truth).
+sources = Table(
+    "sources",
+    metadata,
+    Column("id", SAUUID, primary_key=True),
+    Column("organization_id", SAUUID, ForeignKey("organizations.id"), nullable=False),
+    Column("project_id", SAUUID, ForeignKey("projects.id"), nullable=False),
+    Column(
+        "notebook_id", SAUUID, ForeignKey("research.notebooks.id"), nullable=True
+    ),
+    Column("title", Text, nullable=False),
+    Column("type", Text, nullable=False),
+    Column("status", Text, nullable=False),
+    Column("full_text", Text),
+    Column("error", Text),
+    Column("created_by", SAUUID, ForeignKey("app_users.id"), nullable=False),
+    Column("created_at", DateTime(timezone=True), server_default=func.now()),
+    Column("updated_at", DateTime(timezone=True), server_default=func.now()),
+    Index("sources_project_id_idx", "project_id"),
+    Index("sources_organization_id_idx", "organization_id"),
+    Index("sources_notebook_id_idx", "notebook_id"),
+    schema="research",
+)
+
+source_chunks = Table(
+    "source_chunks",
+    metadata,
+    Column("id", SAUUID, primary_key=True),
+    Column("organization_id", SAUUID, ForeignKey("organizations.id"), nullable=False),
+    Column("project_id", SAUUID, ForeignKey("projects.id"), nullable=False),
+    Column(
+        "notebook_id", SAUUID, ForeignKey("research.notebooks.id"), nullable=True
+    ),
+    Column(
+        "source_id", SAUUID, ForeignKey("research.sources.id"), nullable=False
+    ),
+    Column("chunk_index", Integer, nullable=False),
+    Column("content", Text, nullable=False),
+    Index("source_chunks_project_id_idx", "project_id"),
+    Index("source_chunks_organization_id_idx", "organization_id"),
+    Index("source_chunks_source_id_idx", "source_id"),
     schema="research",
 )

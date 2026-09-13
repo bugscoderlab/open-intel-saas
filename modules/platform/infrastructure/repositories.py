@@ -23,6 +23,7 @@ from modules.platform.domain.entities import (
     Membership,
     Organization,
     OutboxEvent,
+    OutboxEventRecord,
     Project,
     ProjectMembership,
     ProjectTag,
@@ -552,4 +553,33 @@ class SqlOutbox:
             insert(tables.outbox_events).values(
                 id=uuid4(), event_type=event.event_type, payload=event.payload
             )
+        )
+
+    async def list_unpublished(
+        self, event_type: str, *, limit: int = 100
+    ) -> list[OutboxEventRecord]:
+        result = await self._session.execute(
+            select(tables.outbox_events)
+            .where(
+                tables.outbox_events.c.event_type == event_type,
+                tables.outbox_events.c.published_at.is_(None),
+            )
+            .order_by(tables.outbox_events.c.occurred_at)
+            .limit(limit)
+        )
+        return [
+            OutboxEventRecord(
+                id=row.id, event_type=row.event_type, payload=row.payload
+            )
+            for row in result.all()
+        ]
+
+    async def mark_published(self, event_id: UUID) -> None:
+        await self._session.execute(
+            update(tables.outbox_events)
+            .where(
+                tables.outbox_events.c.id == event_id,
+                tables.outbox_events.c.published_at.is_(None),
+            )
+            .values(published_at=datetime.now(UTC))
         )

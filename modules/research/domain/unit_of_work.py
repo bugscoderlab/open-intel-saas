@@ -11,7 +11,7 @@ from typing import Protocol
 from uuid import UUID
 
 from modules.platform.domain.unit_of_work import PlatformUnit
-from modules.research.domain.entities import Notebook
+from modules.research.domain.entities import Notebook, Source, SourceChunk
 
 
 class Notebooks(Protocol):
@@ -31,7 +31,48 @@ class Notebooks(Protocol):
     ) -> list[Notebook]: ...
 
 
+class Sources(Protocol):
+    """Source repository — the tenant scope is explicit on every query."""
+
+    async def create(self, source: Source) -> None: ...
+    async def get(
+        self, organization_id: UUID, project_id: UUID, source_id: UUID
+    ) -> Source | None: ...
+    async def update_status(
+        self,
+        organization_id: UUID,
+        project_id: UUID,
+        source_id: UUID,
+        *,
+        status: str,
+        error: str | None,
+    ) -> None: ...
+    async def list_for_project(
+        self, organization_id: UUID, project_id: UUID
+    ) -> list[Source]: ...
+
+
+class SourceChunks(Protocol):
+    """Chunk repository. The pipeline writes chunks as one
+    delete-and-reinsert operation so reprocessing a Source is idempotent
+    under repeated execution (mirroring upstream embed_source)."""
+
+    async def replace_for_source(
+        self,
+        organization_id: UUID,
+        project_id: UUID,
+        source_id: UUID,
+        notebook_id: UUID | None,
+        chunks: list[SourceChunk],
+    ) -> None: ...
+    async def list_for_source(
+        self, organization_id: UUID, project_id: UUID, source_id: UUID
+    ) -> list[SourceChunk]: ...
+
+
 class ResearchUnit(PlatformUnit, Protocol):
     """One transaction worth of platform + research repositories."""
 
     notebooks: Notebooks
+    sources: Sources
+    source_chunks: SourceChunks

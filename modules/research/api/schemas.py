@@ -25,3 +25,22 @@ class NotebookResponse(BaseModel):
     name: str
     description: str | None
     archived: bool
+
+
+class SourceCreateRequest(BaseModel):
+    notebook_id: UUID
+    title: str
+    content: str
+
+
+class SourceResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    organization_id: UUID
+    project_id: UUID
+    notebook_id: UUID | None
+    title: str
+    type: str
+    status: str
+    error: str | None

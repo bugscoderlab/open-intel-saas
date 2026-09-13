@@ -103,3 +103,14 @@ class AuditEntry:
 class OutboxEvent:
     event_type: str
     payload: dict
+
+
+@dataclass(frozen=True)
+class OutboxEventRecord:
+    """A persisted outbox row as consumed by dispatchers: the database id
+    plus what was written. ``add`` takes an OutboxEvent (no id — the
+    database assigns it); readers get records back."""
+
+    id: UUID
+    event_type: str
+    payload: dict

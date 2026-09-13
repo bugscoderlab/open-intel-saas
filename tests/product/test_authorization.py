@@ -103,6 +103,7 @@ def test_team_member_is_implied_viewer_on_team_projects() -> None:
             Permission.PROJECT_READ,
             Permission.TAG_READ,
             Permission.NOTEBOOK_READ,
+            Permission.SOURCE_READ,
         }
     )
 
@@ -115,7 +116,12 @@ def test_project_editor_gets_all_project_and_tag_permissions() -> None:
 
 def test_project_viewer_reads_but_never_mutates() -> None:
     assert ROLE_PERMISSIONS[Role.PROJECT_VIEWER] == frozenset(
-        {Permission.PROJECT_READ, Permission.TAG_READ, Permission.NOTEBOOK_READ}
+        {
+            Permission.PROJECT_READ,
+            Permission.TAG_READ,
+            Permission.NOTEBOOK_READ,
+            Permission.SOURCE_READ,
+        }
     )
     assert Permission.TAG_CREATE not in ROLE_PERMISSIONS[Role.PROJECT_VIEWER]
     assert Permission.TAG_UPDATE not in ROLE_PERMISSIONS[Role.PROJECT_VIEWER]

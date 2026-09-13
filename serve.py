@@ -8,6 +8,7 @@ This is the only place infrastructure concerns (environment settings,
 filesystem module discovery) meet the FastAPI app factory.
 """
 
+import asyncio
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -26,7 +27,8 @@ from modules.platform.infrastructure.identity import (  # noqa: E402
 )
 from modules.platform.infrastructure.settings import Settings  # noqa: E402
 from modules.platform.infrastructure.unit_of_work import SqlPlatformUnit  # noqa: E402
-from modules.research.api.routers import build_notebooks_router  # noqa: E402
+from modules.research.api.routers import build_research_router  # noqa: E402
+from modules.research.infrastructure.dispatcher import run_dispatcher  # noqa: E402
 from modules.research.infrastructure.unit_of_work import SqlResearchUnit  # noqa: E402
 
 settings = Settings.from_env()
@@ -56,8 +58,18 @@ app = create_app(
     # The composition root is the only place module infrastructures meet:
     # the research router mounts only when the module state is enabled
     # (plan §20), decided inside the app factory.
-    research_router=build_notebooks_router() if engine is not None else None,
+    research_router=build_research_router() if engine is not None else None,
     research_unit_factory=(
         (lambda: SqlResearchUnit(engine)) if engine is not None else None
     ),
 )
+
+if engine is not None:
+    dispatcher_engine = engine  # narrow for the closure (mypy)
+
+    @app.on_event("startup")
+    async def _start_research_dispatcher() -> None:
+        """Off-request source processing (ADR-004): the in-process
+        dispatcher drains SourceSubmitted outbox events until shutdown.
+        Tests drive the same drain function directly instead."""
+        asyncio.create_task(run_dispatcher(dispatcher_engine))

@@ -48,6 +48,11 @@ class Permission:
     NOTEBOOK_UPDATE = "notebook.update"
     NOTEBOOK_DELETE = "notebook.delete"
 
+    # Source (research module, spec #21, ticket #23)
+    SOURCE_CREATE = "source.create"
+    SOURCE_READ = "source.read"
+    SOURCE_RETRY = "source.retry"
+
 
 ALL_PERMISSIONS = frozenset(
     value for name, value in vars(Permission).items() if name.isupper()
@@ -88,6 +93,14 @@ NOTEBOOK_PERMISSIONS = frozenset(
         Permission.NOTEBOOK_READ,
         Permission.NOTEBOOK_UPDATE,
         Permission.NOTEBOOK_DELETE,
+    }
+)
+
+SOURCE_PERMISSIONS = frozenset(
+    {
+        Permission.SOURCE_CREATE,
+        Permission.SOURCE_READ,
+        Permission.SOURCE_RETRY,
     }
 )
 
@@ -134,6 +147,7 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
         | PROJECT_PERMISSIONS
         | TAG_PERMISSIONS
         | NOTEBOOK_PERMISSIONS
+        | SOURCE_PERMISSIONS
     ),
     Role.ORG_OWNER: frozenset(
         ORG_BASE_PERMISSIONS
@@ -141,6 +155,7 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
         | PROJECT_PERMISSIONS
         | TAG_PERMISSIONS
         | NOTEBOOK_PERMISSIONS
+        | SOURCE_PERMISSIONS
         | {Permission.ORG_DELETE}
     ),
     Role.ORG_MEMBER: frozenset(
@@ -152,7 +167,11 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
         }
     ),
     Role.TEAM_MANAGER: frozenset(
-        TEAM_PERMISSIONS | PROJECT_PERMISSIONS | TAG_PERMISSIONS | NOTEBOOK_PERMISSIONS
+        TEAM_PERMISSIONS
+        | PROJECT_PERMISSIONS
+        | TAG_PERMISSIONS
+        | NOTEBOOK_PERMISSIONS
+        | SOURCE_PERMISSIONS
     ),
     Role.TEAM_MEMBER: frozenset(
         {
@@ -160,13 +179,19 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
             Permission.PROJECT_READ,
             Permission.TAG_READ,
             Permission.NOTEBOOK_READ,
+            Permission.SOURCE_READ,
         }
     ),
     Role.PROJECT_EDITOR: frozenset(
-        PROJECT_PERMISSIONS | TAG_PERMISSIONS | NOTEBOOK_PERMISSIONS
+        PROJECT_PERMISSIONS | TAG_PERMISSIONS | NOTEBOOK_PERMISSIONS | SOURCE_PERMISSIONS
     ),
     Role.PROJECT_VIEWER: frozenset(
-        {Permission.PROJECT_READ, Permission.TAG_READ, Permission.NOTEBOOK_READ}
+        {
+            Permission.PROJECT_READ,
+            Permission.TAG_READ,
+            Permission.NOTEBOOK_READ,
+            Permission.SOURCE_READ,
+        }
     ),
 }
 

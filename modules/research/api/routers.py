@@ -16,9 +16,11 @@ from modules.research.api.schemas import (
     NotebookCreateRequest,
     NotebookResponse,
     NotebookUpdateRequest,
+    SourceCreateRequest,
+    SourceResponse,
 )
-from modules.research.application.services import notebook_service
-from modules.research.domain.entities import Notebook
+from modules.research.application.services import notebook_service, source_service
+from modules.research.domain.entities import Notebook, Source
 
 
 def build_notebooks_router() -> APIRouter:
@@ -108,4 +110,114 @@ def _notebook_response(notebook: Notebook) -> NotebookResponse:
         name=notebook.name,
         description=notebook.description,
         archived=notebook.archived,
+    )
+
+
+def build_sources_router() -> APIRouter:
+    """Text Source ingestion (ticket #23): create returns 202 with the
+    source in "queued" — processing runs off-request via the outbox
+    dispatcher (ADR-004); GET is the status poll; retry re-queues."""
+    router = APIRouter(tags=["sources"])
+
+    @router.post(
+        "/projects/{project_id}/sources",
+        response_model=SourceResponse,
+        status_code=202,
+    )
+    @endpoint
+    async def create_source(
+        project_id: UUID,
+        body: SourceCreateRequest,
+        unit: ResearchUnitDep,
+        principal: PrincipalDep,
+        authz: AuthzDep,
+    ) -> SourceResponse:
+        source = await source_service.create_text_source(
+            unit,
+            authz,
+            principal,
+            project_id=project_id,
+            notebook_id=body.notebook_id,
+            title=body.title,
+            content=body.content,
+        )
+        return _source_response(source)
+
+    @router.get(
+        "/projects/{project_id}/sources", response_model=list[SourceResponse]
+    )
+    @endpoint
+    async def list_sources(
+        project_id: UUID, unit: ResearchUnitDep, principal: PrincipalDep, authz: AuthzDep
+    ) -> list[SourceResponse]:
+        sources = await source_service.list_sources(
+            unit, authz, principal, project_id=project_id
+        )
+        return [_source_response(s) for s in sources]
+
+    @router.get(
+        "/projects/{project_id}/sources/{source_id}",
+        response_model=SourceResponse,
+    )
+    @endpoint
+    async def get_source(
+        project_id: UUID,
+        source_id: UUID,
+        unit: ResearchUnitDep,
+        principal: PrincipalDep,
+        authz: AuthzDep,
+    ) -> SourceResponse:
+        source = await source_service.get_source(
+            unit,
+            authz,
+            principal,
+            project_id=project_id,
+            source_id=source_id,
+        )
+        return _source_response(source)
+
+    @router.post(
+        "/projects/{project_id}/sources/{source_id}/retry",
+        response_model=SourceResponse,
+        status_code=202,
+    )
+    @endpoint
+    async def retry_source(
+        project_id: UUID,
+        source_id: UUID,
+        unit: ResearchUnitDep,
+        principal: PrincipalDep,
+        authz: AuthzDep,
+    ) -> SourceResponse:
+        source = await source_service.retry_source(
+            unit,
+            authz,
+            principal,
+            project_id=project_id,
+            source_id=source_id,
+        )
+        return _source_response(source)
+
+    return router
+
+
+def build_research_router() -> APIRouter:
+    """Everything the research module mounts: one router, wired by the
+    composition root (serve.py) and the test seam (conftest)."""
+    router = APIRouter()
+    router.include_router(build_notebooks_router())
+    router.include_router(build_sources_router())
+    return router
+
+
+def _source_response(source: Source) -> SourceResponse:
+    return SourceResponse(
+        id=source.id,
+        organization_id=source.organization_id,
+        project_id=source.project_id,
+        notebook_id=source.notebook_id,
+        title=source.title,
+        type=source.type,
+        status=source.status,
+        error=source.error,
     )

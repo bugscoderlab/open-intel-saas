@@ -174,7 +174,7 @@ async def app_client(
 
     from modules.platform.api.app import create_app
     from modules.platform.infrastructure.discovery import discover_modules
-    from modules.research.api.routers import build_notebooks_router
+    from modules.research.api.routers import build_research_router
     from modules.research.infrastructure.unit_of_work import SqlResearchUnit
 
     repo_root = Path(__file__).resolve().parents[2]
@@ -189,7 +189,7 @@ async def app_client(
         email_provider=recording_email,
         unit_factory=lambda: SqlPlatformUnit(engine),
         invitation_base_url="http://shell.test",
-        research_router=build_notebooks_router(),
+        research_router=build_research_router(),
         research_unit_factory=lambda: SqlResearchUnit(engine),
     )
     app.state.recording_email = recording_email
@@ -208,7 +208,7 @@ async def api(settings: Settings):
 
     from modules.platform.api.app import create_app
     from modules.platform.infrastructure.discovery import discover_modules
-    from modules.research.api.routers import build_notebooks_router
+    from modules.research.api.routers import build_research_router
     from modules.research.infrastructure.unit_of_work import SqlResearchUnit
 
     repo_root = Path(__file__).resolve().parents[2]
@@ -224,7 +224,7 @@ async def api(settings: Settings):
         email_provider=recording_email,
         unit_factory=lambda: SqlPlatformUnit(engine),
         invitation_base_url="http://shell.test",
-        research_router=build_notebooks_router(),
+        research_router=build_research_router(),
         research_unit_factory=lambda: SqlResearchUnit(engine),
     )
     app.state.recording_email = recording_email

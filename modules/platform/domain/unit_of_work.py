@@ -16,6 +16,7 @@ from modules.platform.domain.entities import (
     Membership,
     Organization,
     OutboxEvent,
+    OutboxEventRecord,
     Project,
     ProjectMembership,
     ProjectTag,
@@ -114,6 +115,10 @@ class AuditLog(Protocol):
 
 class Outbox(Protocol):
     async def add(self, event: OutboxEvent) -> None: ...
+    async def list_unpublished(
+        self, event_type: str, *, limit: int = 100
+    ) -> list[OutboxEventRecord]: ...
+    async def mark_published(self, event_id: UUID) -> None: ...
 
 
 class PlatformUnit(Protocol):

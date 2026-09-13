@@ -9,15 +9,22 @@ plan §14.3).
 """
 
 from modules.platform.infrastructure.unit_of_work import SqlPlatformUnit
-from modules.research.domain.unit_of_work import Notebooks
-from modules.research.infrastructure.repositories import SqlNotebooks
+from modules.research.domain.unit_of_work import Notebooks, SourceChunks, Sources
+from modules.research.infrastructure.repositories import (
+    SqlNotebooks,
+    SqlSourceChunks,
+    SqlSources,
+)
 
 
 class SqlResearchUnit(SqlPlatformUnit):
-    """One request-scoped transaction: platform repositories plus notebooks."""
+    """One request-scoped transaction: platform repositories plus notebooks
+    and sources."""
 
     async def __aenter__(self) -> "SqlResearchUnit":
         await super().__aenter__()
         assert self._session is not None
         self.notebooks: Notebooks = SqlNotebooks(self._session)
+        self.sources: Sources = SqlSources(self._session)
+        self.source_chunks: SourceChunks = SqlSourceChunks(self._session)
         return self
