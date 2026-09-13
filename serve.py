@@ -26,6 +26,8 @@ from modules.platform.infrastructure.identity import (  # noqa: E402
 )
 from modules.platform.infrastructure.settings import Settings  # noqa: E402
 from modules.platform.infrastructure.unit_of_work import SqlPlatformUnit  # noqa: E402
+from modules.research.api.routers import build_notebooks_router  # noqa: E402
+from modules.research.infrastructure.unit_of_work import SqlResearchUnit  # noqa: E402
 
 settings = Settings.from_env()
 
@@ -51,4 +53,11 @@ app = create_app(
     ),
     unit_factory=(lambda: SqlPlatformUnit(engine)) if engine is not None else None,
     invitation_base_url=settings.invitation_base_url,
+    # The composition root is the only place module infrastructures meet:
+    # the research router mounts only when the module state is enabled
+    # (plan §20), decided inside the app factory.
+    research_router=build_notebooks_router() if engine is not None else None,
+    research_unit_factory=(
+        (lambda: SqlResearchUnit(engine)) if engine is not None else None
+    ),
 )

@@ -414,5 +414,130 @@ async def test_rls_policies_anon_role_sees_nothing(seeded, settings) -> None:
             )
             assert await conn.fetch("select * from public.project_tags") == []
             assert await conn.fetch("select * from public.organizations") == []
+            assert await conn.fetch("select * from research.notebooks") == []
+    finally:
+        await conn.close()
+
+
+# --- §17: research module — Notebook isolation (spec #21, ticket #22) --------
+
+
+async def test_cross_tenant_notebook_list_denied(seeded, tenant_ids, api) -> None:
+    """Alpha's notebook in Alpha's project: the other tenant cannot even
+    list the project's notebooks (no membership → tenant-safe 404)."""
+    created = await api.post(
+        f"/projects/{tenant_ids['A']['project']}/notebooks",
+        json={"name": "isolation-probe-list"},
+        headers=auth_headers(seeded["a1"]),
+    )
+    assert created.status_code == 201, created.text
+    for user_key in ("b1", "b2"):
+        assert (await api.get(
+            f"/projects/{tenant_ids['A']['project']}/notebooks",
+            headers=auth_headers(seeded[user_key]),
+        )).status_code == 404, f"{user_key} listed Alpha's notebooks"
+
+
+async def test_cross_tenant_notebook_mutate_denied(seeded, tenant_ids, api) -> None:
+    created = await api.post(
+        f"/projects/{tenant_ids['A']['project']}/notebooks",
+        json={"name": "isolation-probe-mutate"},
+        headers=auth_headers(seeded["a1"]),
+    )
+    assert created.status_code == 201, created.text
+    notebook_id = created.json()["id"]
+    for user_key in ("b1", "b2"):
+        assert (await api.patch(
+            f"/projects/{tenant_ids['A']['project']}/notebooks/{notebook_id}",
+            json={"name": "hijack"},
+            headers=auth_headers(seeded[user_key]),
+        )).status_code == 404
+        assert (await api.delete(
+            f"/projects/{tenant_ids['A']['project']}/notebooks/{notebook_id}",
+            headers=auth_headers(seeded[user_key]),
+        )).status_code == 404
+    # A guessed notebook id is not an oracle: addressed inside the probing
+    # tenant's own project URL space it still resolves to nothing.
+    assert (await api.patch(
+        f"/projects/{tenant_ids['B']['project']}/notebooks/{notebook_id}",
+        json={"name": "hijack"},
+        headers=auth_headers(seeded["b1"]),
+    )).status_code == 404
+
+
+async def test_service_role_notebook_reads_are_scope_filtered(
+    seeded, tenant_ids, settings, api
+) -> None:
+    """The backend's service connection bypasses RLS; the research
+    repository is the enforced layer: Alpha's notebook addressed with
+    Beta's scope returns nothing."""
+    from modules.platform.infrastructure.db import create_engine
+    from modules.research.infrastructure.unit_of_work import SqlResearchUnit
+
+    created = await api.post(
+        f"/projects/{tenant_ids['A']['project']}/notebooks",
+        json={"name": "isolation-probe-repo"},
+        headers=auth_headers(seeded["a1"]),
+    )
+    assert created.status_code == 201, created.text
+    notebook_id = created.json()["id"]
+
+    engine = create_engine(settings.database_dsn)
+    try:
+        async with SqlResearchUnit(engine) as unit:
+            alpha_scope = await unit.notebooks.get(
+                UUID(tenant_ids["A"]["org"]),
+                UUID(tenant_ids["A"]["project"]),
+                UUID(notebook_id),
+            )
+            assert alpha_scope is not None
+            cross = await unit.notebooks.get(
+                UUID(tenant_ids["B"]["org"]),
+                UUID(tenant_ids["B"]["project"]),
+                UUID(notebook_id),
+            )
+            assert cross is None
+            listed = await unit.notebooks.list_for_project(
+                UUID(tenant_ids["B"]["org"]),
+                UUID(tenant_ids["B"]["project"]),
+            )
+            assert all(
+                str(n.organization_id) == tenant_ids["B"]["org"] for n in listed
+            )
+    finally:
+        await engine.dispose()
+
+
+async def test_rls_policies_block_cross_tenant_notebook_reads(
+    seeded, tenant_ids, settings, subjects, api
+) -> None:
+    """Bypass the API and repositories entirely: as the authenticated role
+    with the user JWT, RLS on research.notebooks must still deny
+    cross-tenant rows (and allow own-tenant rows)."""
+    created = await api.post(
+        f"/projects/{tenant_ids['A']['project']}/notebooks",
+        json={"name": "isolation-probe-rls"},
+        headers=auth_headers(seeded["a1"]),
+    )
+    assert created.status_code == 201, created.text
+    conn = await asyncpg.connect(settings.database_dsn_asyncpg, timeout=30)
+    try:
+        async with conn.transaction():
+            await conn.execute("set local role authenticated")
+            claims = json.dumps({"sub": subjects["a1"]})
+            await conn.execute(
+                "select set_config('request.jwt.claims', $1, true)", claims
+            )
+            # Own-tenant row visible…
+            rows = await conn.fetch("select organization_id from research.notebooks")
+            org_ids = {str(r["organization_id"]) for r in rows}
+            assert tenant_ids["A"]["org"] in org_ids
+            # …and nothing from any other tenant.
+            assert org_ids <= {tenant_ids["A"]["org"]}
+            cross = await conn.fetch(
+                "select * from research.notebooks where organization_id = $1::uuid",
+                tenant_ids["B"]["org"],
+            )
+            assert cross == []
     finally:
         await conn.close()

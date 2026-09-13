@@ -53,3 +53,65 @@ def test_platform_module_missing_is_rejected() -> None:
     """Startup input without the platform module is invalid."""
     with pytest.raises(ValueError, match="platform"):
         build_module_states([RESEARCH], disabled=set())
+
+
+# --- Router mounting: optional-module routers follow module state ------------
+
+
+class _Config:
+    """Minimal ModuleConfig for app-factory tests."""
+
+    def __init__(self, disabled: set[str]) -> None:
+        self._disabled = disabled
+
+    @property
+    def disabled_modules(self):
+        return self._disabled
+
+
+def _app(disabled: set[str] | None = None):
+    from fastapi import APIRouter
+
+    from modules.platform.api.app import create_app
+
+    research_router = APIRouter()
+
+    @research_router.get("/research-probe")
+    async def probe() -> None: ...
+
+    return create_app(
+        config=_Config(disabled or set()),
+        registry=ALL_MODULES,
+        research_router=research_router,
+        research_unit_factory=lambda: None,
+    )
+
+
+def test_research_router_mounts_when_module_enabled() -> None:
+    app = _app()
+    paths = {r.path for r in app.routes}
+    assert "/research-probe" in paths
+
+
+def test_research_router_absent_when_module_disabled() -> None:
+    """Plan §20: a disabled module must not take its routes with it while
+    the rest of the API still starts."""
+    app = _app(disabled={"research"})
+    paths = {r.path for r in app.routes}
+    assert "/research-probe" not in paths
+    assert "/healthz" in paths
+
+
+def test_research_router_without_factory_is_rejected() -> None:
+    """Misconfiguration fails fast at the composition seam."""
+    from fastapi import APIRouter
+
+    from modules.platform.api.app import create_app
+
+    with pytest.raises(RuntimeError, match="research unit factory"):
+        create_app(
+            config=_Config(set()),
+            registry=ALL_MODULES,
+            research_router=APIRouter(),
+            research_unit_factory=None,
+        )

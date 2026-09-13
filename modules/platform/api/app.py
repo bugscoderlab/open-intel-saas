@@ -7,7 +7,7 @@ email provider) are constructed here unless injected — tests inject
 fakes at exactly these seams.
 """
 
-from fastapi import FastAPI
+from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from modules.platform.api.health import build_health_router
@@ -34,17 +34,28 @@ def create_app(
     email_provider: TransactionalEmailProvider | None = None,
     unit_factory=None,
     invitation_base_url: str = "http://localhost:3000",
+    research_router: APIRouter | None = None,
+    research_unit_factory=None,
 ) -> FastAPI:
     """Assemble the API. Fails to start if the platform module is absent.
 
     Infrastructure pieces arrive pre-constructed from the composition
     root (``serve.py``) or test fixtures — this layer never imports
     infrastructure (import-linter contract, plan §14.2).
+
+    Optional-module routers arrive pre-built from the composition root
+    and are mounted only while the module is enabled (plan §20) — the
+    app factory itself never imports another module's code.
     """
     try:
         states = build_module_states(registry, config.disabled_modules)
     except ValueError as exc:
         raise RuntimeError(f"cannot start: {exc}") from exc
+
+    if research_router is not None and research_unit_factory is None:
+        raise RuntimeError(
+            "cannot start: a research router was provided without a research unit factory"
+        )
 
     app = FastAPI(title="Open Intel API")
     app.state.module_states = states
@@ -53,6 +64,7 @@ def create_app(
     app.state.email_provider = email_provider
     app.state.invitation_base_url = invitation_base_url
     app.state.unit_factory = unit_factory
+    app.state.research_unit_factory = research_unit_factory
 
     app.add_middleware(
         CORSMiddleware,
@@ -72,4 +84,9 @@ def create_app(
     app.include_router(build_teams_router())
     app.include_router(build_projects_router())
     app.include_router(build_tags_router())
+
+    if research_router is not None:
+        research_state = next((s for s in states if s.name == "research"), None)
+        if research_state is None or research_state.enabled:
+            app.include_router(research_router)
     return app

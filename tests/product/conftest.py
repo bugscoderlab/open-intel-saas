@@ -56,6 +56,8 @@ def unique_test_email(prefix: str = "user") -> str:
 class TestUser:
     """A confirmed Application user with a live access token."""
 
+    __test__ = False  # tell pytest this is a fixture, not a test class
+
     email: str
     password: str
     auth_user_id: str
@@ -172,6 +174,8 @@ async def app_client(
 
     from modules.platform.api.app import create_app
     from modules.platform.infrastructure.discovery import discover_modules
+    from modules.research.api.routers import build_notebooks_router
+    from modules.research.infrastructure.unit_of_work import SqlResearchUnit
 
     repo_root = Path(__file__).resolve().parents[2]
     recording_email = RecordingEmailProvider()
@@ -185,6 +189,8 @@ async def app_client(
         email_provider=recording_email,
         unit_factory=lambda: SqlPlatformUnit(engine),
         invitation_base_url="http://shell.test",
+        research_router=build_notebooks_router(),
+        research_unit_factory=lambda: SqlResearchUnit(engine),
     )
     app.state.recording_email = recording_email
     with TestClient(app, base_url="http://api.test") as client:
@@ -202,6 +208,8 @@ async def api(settings: Settings):
 
     from modules.platform.api.app import create_app
     from modules.platform.infrastructure.discovery import discover_modules
+    from modules.research.api.routers import build_notebooks_router
+    from modules.research.infrastructure.unit_of_work import SqlResearchUnit
 
     repo_root = Path(__file__).resolve().parents[2]
     engine = create_engine(settings.database_dsn)
@@ -216,6 +224,8 @@ async def api(settings: Settings):
         email_provider=recording_email,
         unit_factory=lambda: SqlPlatformUnit(engine),
         invitation_base_url="http://shell.test",
+        research_router=build_notebooks_router(),
+        research_unit_factory=lambda: SqlResearchUnit(engine),
     )
     app.state.recording_email = recording_email
     client = AsyncClient(transport=ASGITransport(app=app), base_url="http://api.test")

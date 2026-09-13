@@ -50,6 +50,12 @@ TAG_PERMS = {
     Permission.TAG_UPDATE,
     Permission.TAG_DELETE,
 }
+NOTEBOOK_PERMS = {
+    Permission.NOTEBOOK_CREATE,
+    Permission.NOTEBOOK_READ,
+    Permission.NOTEBOOK_UPDATE,
+    Permission.NOTEBOOK_DELETE,
+}
 
 
 def test_owner_is_admin_plus_delete() -> None:
@@ -69,6 +75,7 @@ def test_admin_gets_full_team_project_and_tag_access() -> None:
     assert TEAM_PERMS <= ROLE_PERMISSIONS[Role.ORG_ADMIN]
     assert PROJECT_PERMS <= ROLE_PERMISSIONS[Role.ORG_ADMIN]
     assert TAG_PERMS <= ROLE_PERMISSIONS[Role.ORG_ADMIN]
+    assert NOTEBOOK_PERMS <= ROLE_PERMISSIONS[Role.ORG_ADMIN]
 
 
 def test_member_gets_narrow_org_permissions_only() -> None:
@@ -86,6 +93,7 @@ def test_team_manager_is_implied_editor_on_team_projects() -> None:
     assert TEAM_PERMS <= ROLE_PERMISSIONS[Role.TEAM_MANAGER]
     assert PROJECT_PERMS <= ROLE_PERMISSIONS[Role.TEAM_MANAGER]
     assert TAG_PERMS <= ROLE_PERMISSIONS[Role.TEAM_MANAGER]
+    assert NOTEBOOK_PERMS <= ROLE_PERMISSIONS[Role.TEAM_MANAGER]
 
 
 def test_team_member_is_implied_viewer_on_team_projects() -> None:
@@ -94,6 +102,7 @@ def test_team_member_is_implied_viewer_on_team_projects() -> None:
             Permission.TEAM_READ,
             Permission.PROJECT_READ,
             Permission.TAG_READ,
+            Permission.NOTEBOOK_READ,
         }
     )
 
@@ -101,15 +110,19 @@ def test_team_member_is_implied_viewer_on_team_projects() -> None:
 def test_project_editor_gets_all_project_and_tag_permissions() -> None:
     assert PROJECT_PERMS <= ROLE_PERMISSIONS[Role.PROJECT_EDITOR]
     assert TAG_PERMS <= ROLE_PERMISSIONS[Role.PROJECT_EDITOR]
+    assert NOTEBOOK_PERMS <= ROLE_PERMISSIONS[Role.PROJECT_EDITOR]
 
 
 def test_project_viewer_reads_but_never_mutates() -> None:
     assert ROLE_PERMISSIONS[Role.PROJECT_VIEWER] == frozenset(
-        {Permission.PROJECT_READ, Permission.TAG_READ}
+        {Permission.PROJECT_READ, Permission.TAG_READ, Permission.NOTEBOOK_READ}
     )
     assert Permission.TAG_CREATE not in ROLE_PERMISSIONS[Role.PROJECT_VIEWER]
     assert Permission.TAG_UPDATE not in ROLE_PERMISSIONS[Role.PROJECT_VIEWER]
     assert Permission.TAG_DELETE not in ROLE_PERMISSIONS[Role.PROJECT_VIEWER]
+    assert Permission.NOTEBOOK_CREATE not in ROLE_PERMISSIONS[Role.PROJECT_VIEWER]
+    assert Permission.NOTEBOOK_UPDATE not in ROLE_PERMISSIONS[Role.PROJECT_VIEWER]
+    assert Permission.NOTEBOOK_DELETE not in ROLE_PERMISSIONS[Role.PROJECT_VIEWER]
 
 
 def test_resolution_order_is_most_specific_scope_wins() -> None:

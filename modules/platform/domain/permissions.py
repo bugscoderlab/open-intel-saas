@@ -42,6 +42,12 @@ class Permission:
     TAG_UPDATE = "tag.update"
     TAG_DELETE = "tag.delete"
 
+    # Notebook (research module, spec #21)
+    NOTEBOOK_CREATE = "notebook.create"
+    NOTEBOOK_READ = "notebook.read"
+    NOTEBOOK_UPDATE = "notebook.update"
+    NOTEBOOK_DELETE = "notebook.delete"
+
 
 ALL_PERMISSIONS = frozenset(
     value for name, value in vars(Permission).items() if name.isupper()
@@ -73,6 +79,15 @@ TAG_PERMISSIONS = frozenset(
         Permission.TAG_READ,
         Permission.TAG_UPDATE,
         Permission.TAG_DELETE,
+    }
+)
+
+NOTEBOOK_PERMISSIONS = frozenset(
+    {
+        Permission.NOTEBOOK_CREATE,
+        Permission.NOTEBOOK_READ,
+        Permission.NOTEBOOK_UPDATE,
+        Permission.NOTEBOOK_DELETE,
     }
 )
 
@@ -110,17 +125,22 @@ class Role:
 # - member = org.read, member.list, team.create, project.create only.
 # - team manager = all team permissions plus implied editor on team
 #   projects; team member = implied viewer on team projects.
-# - project editor = all project and tag permissions plus member
-#   invite/remove; project viewer = project.read, tag.read.
+# - project editor = all project, tag, and notebook permissions plus member
+#   invite/remove; project viewer = project.read, tag.read, notebook.read.
 ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
     Role.ORG_ADMIN: frozenset(
-        ORG_BASE_PERMISSIONS | TEAM_PERMISSIONS | PROJECT_PERMISSIONS | TAG_PERMISSIONS
+        ORG_BASE_PERMISSIONS
+        | TEAM_PERMISSIONS
+        | PROJECT_PERMISSIONS
+        | TAG_PERMISSIONS
+        | NOTEBOOK_PERMISSIONS
     ),
     Role.ORG_OWNER: frozenset(
         ORG_BASE_PERMISSIONS
         | TEAM_PERMISSIONS
         | PROJECT_PERMISSIONS
         | TAG_PERMISSIONS
+        | NOTEBOOK_PERMISSIONS
         | {Permission.ORG_DELETE}
     ),
     Role.ORG_MEMBER: frozenset(
@@ -132,13 +152,22 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
         }
     ),
     Role.TEAM_MANAGER: frozenset(
-        TEAM_PERMISSIONS | PROJECT_PERMISSIONS | TAG_PERMISSIONS
+        TEAM_PERMISSIONS | PROJECT_PERMISSIONS | TAG_PERMISSIONS | NOTEBOOK_PERMISSIONS
     ),
     Role.TEAM_MEMBER: frozenset(
-        {Permission.TEAM_READ, Permission.PROJECT_READ, Permission.TAG_READ}
+        {
+            Permission.TEAM_READ,
+            Permission.PROJECT_READ,
+            Permission.TAG_READ,
+            Permission.NOTEBOOK_READ,
+        }
     ),
-    Role.PROJECT_EDITOR: frozenset(PROJECT_PERMISSIONS | TAG_PERMISSIONS),
-    Role.PROJECT_VIEWER: frozenset({Permission.PROJECT_READ, Permission.TAG_READ}),
+    Role.PROJECT_EDITOR: frozenset(
+        PROJECT_PERMISSIONS | TAG_PERMISSIONS | NOTEBOOK_PERMISSIONS
+    ),
+    Role.PROJECT_VIEWER: frozenset(
+        {Permission.PROJECT_READ, Permission.TAG_READ, Permission.NOTEBOOK_READ}
+    ),
 }
 
 ORG_ROLES = frozenset({Role.ORG_OWNER, Role.ORG_ADMIN, Role.ORG_MEMBER})

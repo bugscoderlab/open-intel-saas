@@ -82,6 +82,12 @@ notebooks = [
 profile = "black"
 line_length = 88
 
+[tool.pytest.ini_options]
+filterwarnings = [
+    # upstream: starlette's TestClient deprecates httpx in favor of httpx2
+    "ignore:Using `httpx` with `starlette.testclient` is deprecated:Warning",
+]
+
 [tool.ruff]
 line-length = 88
 
@@ -114,12 +120,14 @@ type = "layers"
 # Spec §14.2: api → application → domain; infrastructure implements the
 # domain ports and is reached only through them (composition root wires it).
 # The forbidden contract below backs the "never import infrastructure" half.
+# containers recurs the same layer contract over the research module
+# (spec #21: research copies the platform template).
 layers = [
     "api",
     "application",
     "domain",
 ]
-containers = ["modules.platform"]
+containers = ["modules.platform", "modules.research"]
 
 [[tool.importlinter.contracts]]
 name = "Inner layers never import infrastructure (composition root only)"
@@ -128,13 +136,22 @@ source_modules = [
     "modules.platform.api",
     "modules.platform.application",
     "modules.platform.domain",
+    "modules.research.api",
+    "modules.research.application",
+    "modules.research.domain",
 ]
-forbidden_modules = ["modules.platform.infrastructure"]
+forbidden_modules = [
+    "modules.platform.infrastructure",
+    "modules.research.infrastructure",
+]
 
 [[tool.importlinter.contracts]]
 name = "Domain purity: no framework or provider dependencies"
 type = "forbidden"
-source_modules = ["modules.platform.domain"]
+source_modules = [
+    "modules.platform.domain",
+    "modules.research.domain",
+]
 forbidden_modules = [
     "fastapi",
     "starlette",
