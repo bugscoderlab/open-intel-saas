@@ -43,3 +43,17 @@ Or all at once: `make start-all` (status: `make status`, stop: `make stop-all`).
 | Decision log (ADRs/PDRs) | [docs/7-DEVELOPMENT/decisions/](docs/7-DEVELOPMENT/decisions/) |
 | Contribution process (issue-first, PRs) | [docs/7-DEVELOPMENT/contributing.md](docs/7-DEVELOPMENT/contributing.md) |
 | User/operator docs (install, configure, troubleshoot) | [docs/](docs/index.md) |
+
+## Agent skills
+
+### Issue tracker
+
+GitHub issues in `bugscoderlab/open-intel-saas` (remote `fork`); always pass `--repo` explicitly. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five canonical roles, used verbatim as label strings. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `CONTEXT.md` (created lazily by `/domain-modeling`), decisions in `docs/7-DEVELOPMENT/decisions/`. See `docs/agents/domain.md`.
