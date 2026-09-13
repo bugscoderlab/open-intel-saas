@@ -86,10 +86,13 @@ if engine is not None:
             service_role_key=settings.supabase_service_role_key,
             bucket=settings.storage_bucket,
         )
+    storage = getattr(app.state, "research_storage", None)
 
     @app.on_event("startup")
     async def _start_research_dispatcher() -> None:
         """Off-request source processing (ADR-004): the in-process
         dispatcher drains SourceSubmitted outbox events until shutdown.
         Tests drive the same drain function directly instead."""
-        asyncio.create_task(run_dispatcher(dispatcher_engine, embedder=embedder))
+        asyncio.create_task(
+            run_dispatcher(dispatcher_engine, embedder=embedder, storage=storage)
+        )

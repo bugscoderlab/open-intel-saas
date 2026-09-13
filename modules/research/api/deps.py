@@ -19,6 +19,7 @@ from modules.platform.api.deps import (
     map_error,
 )
 from modules.platform.application.errors import PlatformError
+from modules.platform.domain.storage import FileStorage
 from modules.research.domain.embedder import Embedder
 from modules.research.domain.unit_of_work import ResearchUnit
 
@@ -51,16 +52,27 @@ async def get_search_embedder(request: Request) -> Embedder | None:
     return getattr(request.app.state, "research_embedder", None)
 
 
+async def get_file_storage(request: Request) -> FileStorage | None:
+    """The FileStorage port, provided by the composition root on
+    app.state (Supabase Storage in serve.py, a recording fake in tests).
+    None-safe for the same reason as get_search_embedder: the service
+    turns None into a typed 503 inside the endpoint wrapper."""
+    return getattr(request.app.state, "research_storage", None)
+
+
 SearchEmbedderDep = Annotated[Embedder, Depends(get_search_embedder)]
+FileStorageDep = Annotated[FileStorage | None, Depends(get_file_storage)]
 
 __all__ = [
     "PrincipalDep",
     "AuthzDep",
     "ResearchUnitDep",
     "SearchEmbedderDep",
+    "FileStorageDep",
     "get_principal",
     "get_authz",
     "get_research_unit",
     "get_search_embedder",
+    "get_file_storage",
     "map_error",
 ]

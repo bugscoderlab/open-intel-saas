@@ -51,3 +51,10 @@ class SearchHitResponse(BaseModel):
     title: str
     snippet: str
     score: float
+
+
+class SourceFileDownloadResponse(BaseModel):
+    """A short-lived, pre-authorized download URL (plan §9.3): generated
+    at request time, never persisted."""
+
+    url: str

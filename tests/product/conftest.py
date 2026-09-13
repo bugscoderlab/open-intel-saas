@@ -193,9 +193,12 @@ async def app_client(
         research_unit_factory=lambda: SqlResearchUnit(engine),
     )
     app.state.recording_email = recording_email
-    from tests.product.fakes import DeterministicEmbedder
+    from tests.product.fakes import DeterministicEmbedder, RecordingFileStorage
 
     app.state.research_embedder = DeterministicEmbedder()
+    # The storage seam (ticket #28): the recording fake stands in for
+    # Supabase Storage — no real bucket in tests.
+    app.state.research_storage = RecordingFileStorage()
     with TestClient(app, base_url="http://api.test") as client:
         yield client
 
@@ -231,9 +234,10 @@ async def api(settings: Settings):
         research_unit_factory=lambda: SqlResearchUnit(engine),
     )
     app.state.recording_email = recording_email
-    from tests.product.fakes import DeterministicEmbedder
+    from tests.product.fakes import DeterministicEmbedder, RecordingFileStorage
 
     app.state.research_embedder = DeterministicEmbedder()
+    app.state.research_storage = RecordingFileStorage()
     client = AsyncClient(transport=ASGITransport(app=app), base_url="http://api.test")
     client.app = app  # type: ignore[attr-defined] # convenience handle for tests
     async with client:

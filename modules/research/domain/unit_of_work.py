@@ -53,6 +53,14 @@ class Sources(Protocol):
         status: str,
         error: str | None,
     ) -> None: ...
+    async def update_full_text(
+        self,
+        organization_id: UUID,
+        project_id: UUID,
+        source_id: UUID,
+        *,
+        full_text: str,
+    ) -> None: ...
     async def list_for_project(
         self, organization_id: UUID, project_id: UUID
     ) -> list[Source]: ...

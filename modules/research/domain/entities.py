@@ -18,7 +18,9 @@ STATUS_QUEUED = "queued"
 STATUS_RUNNING = "running"
 STATUS_COMPLETED = "completed"
 STATUS_FAILED = "failed"
-SOURCE_TYPES = ("text",)
+# 'file' widens the type set (ticket #29); the SQL CHECK constraint
+# widened with migration 0013.
+SOURCE_TYPES = ("text", "file")
 SOURCE_STATUSES = (
     STATUS_NEW,
     STATUS_QUEUED,
@@ -27,6 +29,7 @@ SOURCE_STATUSES = (
     STATUS_FAILED,
 )
 SOURCE_TYPE_TEXT = "text"
+SOURCE_TYPE_FILE = "file"
 
 
 @dataclass(frozen=True)
@@ -42,8 +45,9 @@ class Notebook:
 
 @dataclass(frozen=True)
 class Source:
-    """Anything ingested for study (glossary). Text path for this bullet:
-    full_text arrives with the create call, the async pipeline chunks it.
+    """Anything ingested for study (glossary). Text path: full_text arrives
+    with the create call; file path (ticket #29): the stored object's bytes
+    arrive via the async pipeline, which extracts full_text off-request.
     notebook_id stays nullable per §9's source_chunks contract."""
 
     id: UUID

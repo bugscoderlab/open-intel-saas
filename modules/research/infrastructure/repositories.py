@@ -178,6 +178,26 @@ class SqlSources:
             .values(status=status, error=error, updated_at=datetime.now(UTC))
         )
 
+    async def update_full_text(
+        self,
+        organization_id: UUID,
+        project_id: UUID,
+        source_id: UUID,
+        *,
+        full_text: str,
+    ) -> None:
+        """The file pipeline's extraction landing: full_text appears after
+        processing, not at create time (ticket #29)."""
+        await self._session.execute(
+            update(tables.sources)
+            .where(
+                tables.sources.c.organization_id == organization_id,
+                tables.sources.c.project_id == project_id,
+                tables.sources.c.id == source_id,
+            )
+            .values(full_text=full_text, updated_at=datetime.now(UTC))
+        )
+
     async def list_for_project(
         self, organization_id: UUID, project_id: UUID
     ) -> list[Source]:

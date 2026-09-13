@@ -7,17 +7,22 @@ services behind the matrix; no role names here.
 
 from uuid import UUID
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Form, Query, UploadFile
 
 from modules.platform.api.deps import AuthzDep, PrincipalDep
 from modules.platform.api.routers import endpoint
-from modules.research.api.deps import ResearchUnitDep, SearchEmbedderDep
+from modules.research.api.deps import (
+    FileStorageDep,
+    ResearchUnitDep,
+    SearchEmbedderDep,
+)
 from modules.research.api.schemas import (
     NotebookCreateRequest,
     NotebookResponse,
     NotebookUpdateRequest,
     SearchHitResponse,
     SourceCreateRequest,
+    SourceFileDownloadResponse,
     SourceResponse,
 )
 from modules.research.application.services import (
@@ -119,9 +124,11 @@ def _notebook_response(notebook: Notebook) -> NotebookResponse:
 
 
 def build_sources_router() -> APIRouter:
-    """Text Source ingestion (ticket #23): create returns 202 with the
-    source in "queued" — processing runs off-request via the outbox
-    dispatcher (ADR-004); GET is the status poll; retry re-queues."""
+    """Source ingestion (tickets #23/#29): text create and multipart file
+    upload return 202 with the source in "queued" — processing runs
+    off-request via the outbox dispatcher (ADR-004); GET is the status
+    poll; retry re-queues; the file download is a short-lived signed
+    URL gated by source.read (plan §9.3)."""
     router = APIRouter(tags=["sources"])
 
     @router.post(
@@ -202,6 +209,66 @@ def build_sources_router() -> APIRouter:
             source_id=source_id,
         )
         return _source_response(source)
+
+    @router.post(
+        "/projects/{project_id}/sources/file",
+        response_model=SourceResponse,
+        status_code=202,
+    )
+    @endpoint
+    async def create_file_source(
+        project_id: UUID,
+        unit: ResearchUnitDep,
+        principal: PrincipalDep,
+        authz: AuthzDep,
+        storage: FileStorageDep,
+        file: UploadFile,
+        notebook_id: UUID | None = Form(default=None),
+        title: str | None = Form(default=None),
+    ) -> SourceResponse:
+        """Multipart upload (ticket #29): validated, stored, queued — the
+        pipeline extracts text off-request (ADR-004). The read is capped
+        one byte over the limit so an oversize upload fails validation
+        instead of exhausting memory."""
+        from modules.research.application.services import file_service
+
+        data = await file.read(file_service.MAX_FILE_SIZE_BYTES + 1)
+        source = await source_service.create_file_source(
+            unit,
+            authz,
+            principal,
+            project_id=project_id,
+            notebook_id=notebook_id,
+            title=title,
+            filename=file.filename or "upload",
+            content_type=file.content_type or "application/octet-stream",
+            data=data,
+            storage=storage,
+        )
+        return _source_response(source)
+
+    @router.get(
+        "/projects/{project_id}/sources/{source_id}/file",
+        response_model=SourceFileDownloadResponse,
+    )
+    @endpoint
+    async def get_file_download_url(
+        project_id: UUID,
+        source_id: UUID,
+        unit: ResearchUnitDep,
+        principal: PrincipalDep,
+        authz: AuthzDep,
+        storage: FileStorageDep,
+    ) -> SourceFileDownloadResponse:
+        url = await source_service.get_file_download_url(
+            unit,
+            authz,
+            principal,
+            project_id=project_id,
+            source_id=source_id,
+            storage=storage,
+        )
+        return SourceFileDownloadResponse(url=url)
 
     return router
 
