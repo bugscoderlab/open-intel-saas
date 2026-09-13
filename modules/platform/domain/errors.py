@@ -35,6 +35,11 @@ class ConflictError(PlatformError):
     """The request conflicts with current state (duplicate invite, etc.)."""
 
 
+class ValidationError(PlatformError):
+    """The request payload fails domain validation (upload type, size,
+    spoofed content) — rejected before any side effect."""
+
+
 class ServiceUnavailableError(PlatformError):
     """A dependency is not configured or unavailable (embedding model,
     external provider). Retry later or configure the environment."""

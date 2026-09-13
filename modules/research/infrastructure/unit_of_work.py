@@ -13,12 +13,14 @@ from modules.research.domain.unit_of_work import (
     Notebooks,
     Search,
     SourceChunks,
+    SourceFiles,
     Sources,
 )
 from modules.research.infrastructure.repositories import (
     SqlNotebooks,
     SqlSearch,
     SqlSourceChunks,
+    SqlSourceFiles,
     SqlSources,
 )
 
@@ -33,5 +35,6 @@ class SqlResearchUnit(SqlPlatformUnit):
         self.notebooks: Notebooks = SqlNotebooks(self._session)
         self.sources: Sources = SqlSources(self._session)
         self.source_chunks: SourceChunks = SqlSourceChunks(self._session)
+        self.source_files: SourceFiles = SqlSourceFiles(self._session)
         self.search: Search = SqlSearch(self._session)
         return self

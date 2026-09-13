@@ -19,6 +19,7 @@ from modules.research.domain.entities import (
     SearchHit,
     Source,
     SourceChunk,
+    SourceFile,
 )
 from modules.research.infrastructure import db as tables
 
@@ -257,6 +258,75 @@ class SqlSourceChunks:
             .order_by(tables.source_chunks.c.chunk_index)
         )
         return [_row_to_chunk(row) for row in result.all()]
+
+
+# --- Source files (spec #26, ticket #28) ------------------------------------
+
+
+def _row_to_source_file(row: Row) -> SourceFile:
+    return SourceFile(
+        id=row.id,
+        organization_id=row.organization_id,
+        project_id=row.project_id,
+        source_id=row.source_id,
+        provider=row.provider,
+        bucket=row.bucket,
+        object_key=row.object_key,
+        checksum=row.checksum,
+        size_bytes=row.size_bytes,
+        content_type=row.content_type,
+        created_by=row.created_by,
+    )
+
+
+class SqlSourceFiles:
+    """Stored-object registry: the tenant scope is explicit on every query."""
+
+    def __init__(self, session: AsyncSession) -> None:
+        self._session = session
+
+    async def create(self, source_file: SourceFile) -> None:
+        await self._session.execute(
+            insert(tables.source_files).values(
+                id=source_file.id,
+                organization_id=source_file.organization_id,
+                project_id=source_file.project_id,
+                source_id=source_file.source_id,
+                provider=source_file.provider,
+                bucket=source_file.bucket,
+                object_key=source_file.object_key,
+                checksum=source_file.checksum,
+                size_bytes=source_file.size_bytes,
+                content_type=source_file.content_type,
+                created_by=source_file.created_by,
+            )
+        )
+
+    async def get(
+        self, organization_id: UUID, project_id: UUID, source_file_id: UUID
+    ) -> SourceFile | None:
+        result = await self._session.execute(
+            select(tables.source_files).where(
+                tables.source_files.c.organization_id == organization_id,
+                tables.source_files.c.project_id == project_id,
+                tables.source_files.c.id == source_file_id,
+            )
+        )
+        row = result.first()
+        return _row_to_source_file(row) if row else None
+
+    async def get_for_source(
+        self, organization_id: UUID, project_id: UUID, source_id: UUID
+    ) -> SourceFile | None:
+        result = await self._session.execute(
+            select(tables.source_files).where(
+                tables.source_files.c.organization_id == organization_id,
+                tables.source_files.c.project_id == project_id,
+                tables.source_files.c.source_id == source_id,
+            )
+        )
+        row = result.first()
+        return _row_to_source_file(row) if row else None
 
 
 # --- Search (ticket #25) ----------------------------------------------------

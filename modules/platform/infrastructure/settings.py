@@ -53,6 +53,7 @@ class Settings:
     embedding_provider: str = ""
     embedding_model: str = ""
     embedding_api_key: str = ""
+    storage_bucket: str = "open-intel-files"
     seed_password: str = "seed-password-change-me"
 
     @classmethod
@@ -74,6 +75,7 @@ class Settings:
             embedding_provider=environ.get("OPEN_INTEL_EMBEDDING_PROVIDER", ""),
             embedding_model=environ.get("OPEN_INTEL_EMBEDDING_MODEL", ""),
             embedding_api_key=environ.get("OPEN_INTEL_EMBEDDING_API_KEY", ""),
+            storage_bucket=environ.get("OPEN_INTEL_STORAGE_BUCKET", "open-intel-files"),
             seed_password=environ.get(
                 "OPEN_INTEL_SEED_PASSWORD", "seed-password-change-me"
             ),

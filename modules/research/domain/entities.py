@@ -79,6 +79,27 @@ class SourceChunk:
 
 
 @dataclass(frozen=True)
+class SourceFile:
+    """The registry row for a stored object (spec #26, plan §9.3): what was
+    stored, where, and how big. Carries the tenant scope itself; the
+    object key repeats it ({organization_id}/{project_id}/{source_id}/
+    {filename}) so storage-level listing is also tenant-partitioned.
+    Never stores a provider URL — downloads are signed at request time."""
+
+    id: UUID
+    organization_id: UUID
+    project_id: UUID
+    source_id: UUID | None
+    provider: str
+    bucket: str
+    object_key: str
+    checksum: str
+    size_bytes: int
+    content_type: str
+    created_by: UUID
+
+
+@dataclass(frozen=True)
 class SearchHit:
     """One search result (ticket #25). The shape is deliberately small:
     source id, title, snippet, score. Tenant scope never appears in a

@@ -11,7 +11,13 @@ from typing import Protocol
 from uuid import UUID
 
 from modules.platform.domain.unit_of_work import PlatformUnit
-from modules.research.domain.entities import Notebook, SearchHit, Source, SourceChunk
+from modules.research.domain.entities import (
+    Notebook,
+    SearchHit,
+    Source,
+    SourceChunk,
+    SourceFile,
+)
 
 
 class Notebooks(Protocol):
@@ -70,6 +76,19 @@ class SourceChunks(Protocol):
     ) -> list[SourceChunk]: ...
 
 
+class SourceFiles(Protocol):
+    """Stored-object registry (spec #26): the tenant scope is explicit on
+    every query, mirroring the other research repositories."""
+
+    async def create(self, source_file: SourceFile) -> None: ...
+    async def get(
+        self, organization_id: UUID, project_id: UUID, source_file_id: UUID
+    ) -> SourceFile | None: ...
+    async def get_for_source(
+        self, organization_id: UUID, project_id: UUID, source_id: UUID
+    ) -> SourceFile | None: ...
+
+
 class Search(Protocol):
     """Tenant-scoped search (ticket #25). The scope is a mandatory query
     predicate on every search — authorization happens BEFORE retrieval,
@@ -99,4 +118,5 @@ class ResearchUnit(PlatformUnit, Protocol):
     notebooks: Notebooks
     sources: Sources
     source_chunks: SourceChunks
+    source_files: SourceFiles
     search: Search

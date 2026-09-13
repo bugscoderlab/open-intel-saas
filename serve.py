@@ -26,6 +26,7 @@ from modules.platform.infrastructure.identity import (  # noqa: E402
     SupabaseIdentityProvider,
 )
 from modules.platform.infrastructure.settings import Settings  # noqa: E402
+from modules.platform.infrastructure.storage import SupabaseStorage  # noqa: E402
 from modules.platform.infrastructure.unit_of_work import SqlPlatformUnit  # noqa: E402
 from modules.research.api.routers import build_research_router  # noqa: E402
 from modules.research.infrastructure.dispatcher import run_dispatcher  # noqa: E402
@@ -76,6 +77,15 @@ if engine is not None:
         api_key=settings.embedding_api_key or None,
     )
     app.state.research_embedder = embedder
+    # Object storage (spec #26): Supabase Storage bound to the single
+    # private bucket; absent when unconfigured — the file endpoints turn
+    # that into a typed 503, mirroring the embedder seam.
+    if settings.supabase_url and settings.supabase_service_role_key:
+        app.state.research_storage = SupabaseStorage(
+            supabase_url=settings.supabase_url,
+            service_role_key=settings.supabase_service_role_key,
+            bucket=settings.storage_bucket,
+        )
 
     @app.on_event("startup")
     async def _start_research_dispatcher() -> None:

@@ -11,6 +11,7 @@ from modules.platform.domain.errors import (
     PrincipalResolutionError,
     ServiceUnavailableError,
     TokenVerificationError,
+    ValidationError,
 )
 
 __all__ = [
@@ -24,4 +25,5 @@ __all__ = [
     "InvitationInvalidError",
     "InvitationEmailMismatchError",
     "ServiceUnavailableError",
+    "ValidationError",
 ]

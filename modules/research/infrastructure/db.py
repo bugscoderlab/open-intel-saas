@@ -9,6 +9,7 @@ no DDL is emitted from metadata — repositories only read/write.
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import UUID as SAUUID
 from sqlalchemy import (
+    BigInteger,
     Boolean,
     Column,
     DateTime,
@@ -87,5 +88,31 @@ source_chunks = Table(
     Index("source_chunks_project_id_idx", "project_id"),
     Index("source_chunks_organization_id_idx", "organization_id"),
     Index("source_chunks_source_id_idx", "source_id"),
+    schema="research",
+)
+
+# Mirrors migrations/0012_research_source_files.sql (the source of truth).
+# Registry of stored objects (plan §9.3): provider/bucket/object_key —
+# never a provider URL.
+source_files = Table(
+    "source_files",
+    metadata,
+    Column("id", SAUUID, primary_key=True),
+    Column("organization_id", SAUUID, ForeignKey("organizations.id"), nullable=False),
+    Column("project_id", SAUUID, ForeignKey("projects.id"), nullable=False),
+    Column(
+        "source_id", SAUUID, ForeignKey("research.sources.id"), nullable=True
+    ),
+    Column("provider", Text, nullable=False),
+    Column("bucket", Text, nullable=False),
+    Column("object_key", Text, nullable=False),
+    Column("checksum", Text, nullable=False),
+    Column("size_bytes", BigInteger, nullable=False),
+    Column("content_type", Text, nullable=False),
+    Column("created_by", SAUUID, ForeignKey("app_users.id"), nullable=False),
+    Column("created_at", DateTime(timezone=True), server_default=func.now()),
+    Index("source_files_project_id_idx", "project_id"),
+    Index("source_files_organization_id_idx", "organization_id"),
+    Index("source_files_source_id_idx", "source_id"),
     schema="research",
 )

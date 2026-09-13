@@ -1,11 +1,18 @@
-"""Test doubles for the research pipeline (ticket #24).
+"""Test doubles for the research pipeline (ticket #24) and the storage
+seam (ticket #28).
 
 ``DeterministicEmbedder`` returns stable vector(1536) values derived from
 the input text and records every ``embed`` call, so tests can assert both
 the written rows and that the pipeline passed the chunk contents. No
 provider APIs are touched — the seam the ticket's acceptance criteria
 require ("inject a fake/stub embedding model at the composition seam").
+
+``RecordingFileStorage`` is the same composition-root pattern for the
+FileStorage port (spec #26): objects live in memory, every call is
+recorded, and signed URLs are deterministic — no real bucket is touched.
 """
+
+from datetime import timedelta
 
 from modules.research.application.errors import EmbeddingProviderError
 from modules.research.domain.embedder import EMBEDDING_DIMENSIONS
@@ -68,3 +75,35 @@ class KeywordEmbedder:
         return [
             1.0 if keyword in lowered else 0.05 for keyword in self._keywords
         ] + [0.05] * (EMBEDDING_DIMENSIONS - len(self._keywords))
+
+
+class RecordingFileStorage:
+    """In-memory FileStorage: records puts/deletes/sign calls, serves
+    stored bytes back, and returns deterministic signed URLs."""
+
+    provider = "recording"
+
+    def __init__(self, bucket: str = "test-files") -> None:
+        self.bucket = bucket
+        self.objects: dict[str, bytes] = {}
+        self.puts: list[tuple[str, str, bytes, str]] = []
+        self.deletes: list[str] = []
+        self.sign_calls: list[tuple[str, str]] = []
+
+    async def put(self, key: str, data: bytes, content_type: str) -> None:
+        self.puts.append((self.bucket, key, data, content_type))
+        self.objects[key] = data
+
+    async def get(self, key: str) -> bytes:
+        try:
+            return self.objects[key]
+        except KeyError:
+            raise FileNotFoundError(key) from None
+
+    async def delete(self, key: str) -> None:
+        self.deletes.append(key)
+        self.objects.pop(key, None)
+
+    async def signed_url(self, key: str, ttl: timedelta) -> str:
+        self.sign_calls.append((self.bucket, key))
+        return f"signed://{self.bucket}/{key}"
