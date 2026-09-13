@@ -40,7 +40,7 @@ jobs:
       - name: Ruff (product code)
         run: ruff check modules tests/product serve.py
       - name: Mypy (platform module + product tests)
-        run: mypy modules/platform tests/product --ignore-missing-imports
+          run: mypy modules/platform modules/research tests/product --ignore-missing-imports
       - name: Architecture contracts (import-linter)
         run: lint-imports
       - name: Product tests
