@@ -1,0 +1,69 @@
+# Roadmap for /auto-matt --phase (see docs/agents/roadmap-runner.md).
+# Phases and spec anchors come from planning/open-notebook-multiteam-saas-plan-3.md §16.
+# Phases 3-8 run fully autonomously; 9-10 are `gated`: automatable code lands,
+# credential/human items (Stripe keys, pen test, drills) become ready-for-human
+# tickets and stay open at ROADMAP-COMPLETE.
+
+repo: bugscoderlab/open-intel-saas
+branch: auto/roadmap
+push: true
+gate: make ci-local
+approval: checkpoint
+
+phases:
+  - id: 3
+    name: Manual competitor directory
+    spec:
+      - "planning/open-notebook-multiteam-saas-plan-3.md#L1286-L1297"
+      - "planning/open-notebook-multiteam-saas-plan-3.md"
+    mode: auto
+
+  - id: 4
+    name: Collection integrations
+    spec:
+      - "planning/open-notebook-multiteam-saas-plan-3.md#L1299-L1311"
+      - "planning/open-notebook-multiteam-saas-plan-3.md"
+    mode: auto
+
+  - id: 5
+    name: Structured extraction
+    spec:
+      - "planning/open-notebook-multiteam-saas-plan-3.md#L1313-L1325"
+      - "planning/open-notebook-multiteam-saas-plan-3.md"
+    mode: auto
+
+  - id: 6
+    name: Analytics
+    spec:
+      - "planning/open-notebook-multiteam-saas-plan-3.md#L1327-L1341"
+      - "planning/open-notebook-multiteam-saas-plan-3.md"
+    mode: auto
+
+  - id: 7
+    name: Intelligence chatbot
+    spec:
+      - "planning/open-notebook-multiteam-saas-plan-3.md#L1343-L1355"
+      - "planning/open-notebook-multiteam-saas-plan-3.md"
+    mode: auto
+
+  - id: 8
+    name: Monitoring and alerts
+    spec:
+      - "planning/open-notebook-multiteam-saas-plan-3.md#L1357-L1369"
+      - "planning/open-notebook-multiteam-saas-plan-3.md"
+    mode: auto
+
+  - id: 9
+    name: Commercial subscription integration
+    spec:
+      - "planning/open-notebook-multiteam-saas-plan-3.md#L1371-L1383"
+      - "planning/open-notebook-multiteam-saas-plan-3.md"
+    mode: gated
+
+  - id: 10
+    name: Security verification and production hardening
+    spec:
+      - "planning/open-notebook-multiteam-saas-plan-3.md#L1385-L1400"
+      - "planning/open-notebook-multiteam-saas-plan-3.md#L1414-L1560"
+      - "planning/open-notebook-multiteam-saas-plan-3.md"
+    mode: gated

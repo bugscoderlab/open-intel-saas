@@ -57,3 +57,7 @@ The five canonical roles, used verbatim as label strings. See `docs/agents/triag
 ### Domain docs
 
 Single-context: `CONTEXT.md` (created lazily by `/domain-modeling`), decisions in `docs/7-DEVELOPMENT/decisions/`. See `docs/agents/domain.md`.
+
+### Roadmap runner
+
+Unattended phase-by-phase execution via `/auto-matt --phase <n|all>` and `ralph.sh`, driven by `.auto-matt/roadmap.yaml`. See `docs/agents/roadmap-runner.md`.

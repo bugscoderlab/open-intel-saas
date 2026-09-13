@@ -245,3 +245,14 @@ product-check:
 	@uv run ruff check modules tests/product serve.py
 	@uv run lint-imports
 	@uv run pytest tests/product -q
+
+# The full product CI gate locally — mirrors .github/workflows/product-ci.yml
+# (backend ruff/mypy/import-linter/pytest + shell lint/build). Build-time
+# NEXT_PUBLIC_* vars come from the environment / .env (the anon key is the
+# non-secret publishable key). Used as the gate: by /auto-matt --phase.
+ci-local:
+	uv run ruff check modules tests/product serve.py
+	uv run python -m mypy modules/platform modules/research tests/product --ignore-missing-imports
+	uv run lint-imports
+	uv run pytest tests/product -q
+	cd shell && npm run lint && npm run build
