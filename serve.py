@@ -75,6 +75,7 @@ if engine is not None:
         model_name=settings.embedding_model,
         api_key=settings.embedding_api_key or None,
     )
+    app.state.research_embedder = embedder
 
     @app.on_event("startup")
     async def _start_research_dispatcher() -> None:

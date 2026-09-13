@@ -193,6 +193,9 @@ async def app_client(
         research_unit_factory=lambda: SqlResearchUnit(engine),
     )
     app.state.recording_email = recording_email
+    from tests.product.fakes import DeterministicEmbedder
+
+    app.state.research_embedder = DeterministicEmbedder()
     with TestClient(app, base_url="http://api.test") as client:
         yield client
 
@@ -228,6 +231,9 @@ async def api(settings: Settings):
         research_unit_factory=lambda: SqlResearchUnit(engine),
     )
     app.state.recording_email = recording_email
+    from tests.product.fakes import DeterministicEmbedder
+
+    app.state.research_embedder = DeterministicEmbedder()
     client = AsyncClient(transport=ASGITransport(app=app), base_url="http://api.test")
     client.app = app  # type: ignore[attr-defined] # convenience handle for tests
     async with client:
@@ -268,3 +274,20 @@ async def org(api, owner: TestUser, settings) -> AsyncIterator[str]:
         )
     finally:
         await conn.close()
+
+
+@pytest_asyncio.fixture
+async def drain_with(settings) -> AsyncIterator:
+    """Run the in-process dispatcher with an explicitly chosen embedder —
+    the composition seam (ticket #24): tests pick a deterministic fake,
+    never a real provider."""
+    from modules.platform.infrastructure.db import create_engine
+    from modules.research.infrastructure.dispatcher import drain_pending_sources
+
+    engine = create_engine(settings.database_dsn)
+
+    async def _drain(embedder) -> int:
+        return await drain_pending_sources(engine, embedder=embedder)
+
+    yield _drain
+    await engine.dispose()

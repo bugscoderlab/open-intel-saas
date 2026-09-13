@@ -74,6 +74,7 @@ def map_error(exc: PlatformError) -> HTTPException:
         InvitationEmailMismatchError,
         InvitationInvalidError,
         NotFoundError,
+        ServiceUnavailableError,
     )
 
     if isinstance(exc, (InvitationInvalidError,)):
@@ -84,6 +85,8 @@ def map_error(exc: PlatformError) -> HTTPException:
         return HTTPException(status.HTTP_403_FORBIDDEN, detail=str(exc))
     if isinstance(exc, (ConflictError,)):
         return HTTPException(status.HTTP_409_CONFLICT, detail=str(exc))
+    if isinstance(exc, (ServiceUnavailableError,)):
+        return HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc))
     return HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc))
 
 

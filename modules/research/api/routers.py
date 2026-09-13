@@ -7,20 +7,25 @@ services behind the matrix; no role names here.
 
 from uuid import UUID
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 
 from modules.platform.api.deps import AuthzDep, PrincipalDep
 from modules.platform.api.routers import endpoint
-from modules.research.api.deps import ResearchUnitDep
+from modules.research.api.deps import ResearchUnitDep, SearchEmbedderDep
 from modules.research.api.schemas import (
     NotebookCreateRequest,
     NotebookResponse,
     NotebookUpdateRequest,
+    SearchHitResponse,
     SourceCreateRequest,
     SourceResponse,
 )
-from modules.research.application.services import notebook_service, source_service
-from modules.research.domain.entities import Notebook, Source
+from modules.research.application.services import (
+    notebook_service,
+    search_service,
+    source_service,
+)
+from modules.research.domain.entities import Notebook, SearchHit, Source
 
 
 def build_notebooks_router() -> APIRouter:
@@ -201,12 +206,65 @@ def build_sources_router() -> APIRouter:
     return router
 
 
+def build_search_router() -> APIRouter:
+    """Tenant-scoped search (ticket #25): keyword full-text and semantic
+    vector search inside a Project. Authorization before retrieval — the
+    tenant scope is part of the query predicate, never a post-filter."""
+    router = APIRouter(tags=["search"])
+
+    @router.get(
+        "/projects/{project_id}/search/text",
+        response_model=list[SearchHitResponse],
+    )
+    @endpoint
+    async def search_text(
+        project_id: UUID,
+        unit: ResearchUnitDep,
+        principal: PrincipalDep,
+        authz: AuthzDep,
+        q: str = "",
+        limit: int = Query(default=10, ge=1, le=25),
+    ) -> list[SearchHitResponse]:
+        hits = await search_service.search_text(
+            unit, authz, principal, project_id=project_id, query=q, limit=limit
+        )
+        return [_search_hit_response(h) for h in hits]
+
+    @router.get(
+        "/projects/{project_id}/search/vector",
+        response_model=list[SearchHitResponse],
+    )
+    @endpoint
+    async def search_vector(
+        project_id: UUID,
+        unit: ResearchUnitDep,
+        principal: PrincipalDep,
+        authz: AuthzDep,
+        embedder: SearchEmbedderDep,
+        q: str = "",
+        limit: int = Query(default=10, ge=1, le=25),
+    ) -> list[SearchHitResponse]:
+        hits = await search_service.search_vector(
+            unit,
+            authz,
+            principal,
+            project_id=project_id,
+            query=q,
+            embedder=embedder,
+            limit=limit,
+        )
+        return [_search_hit_response(h) for h in hits]
+
+    return router
+
+
 def build_research_router() -> APIRouter:
     """Everything the research module mounts: one router, wired by the
     composition root (serve.py) and the test seam (conftest)."""
     router = APIRouter()
     router.include_router(build_notebooks_router())
     router.include_router(build_sources_router())
+    router.include_router(build_search_router())
     return router
 
 
@@ -220,4 +278,13 @@ def _source_response(source: Source) -> SourceResponse:
         type=source.type,
         status=source.status,
         error=source.error,
+    )
+
+
+def _search_hit_response(hit: SearchHit) -> SearchHitResponse:
+    return SearchHitResponse(
+        source_id=hit.source_id,
+        title=hit.title,
+        snippet=hit.snippet,
+        score=hit.score,
     )

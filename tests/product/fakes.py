@@ -47,3 +47,24 @@ class FlakyEmbedder:
             self._failures -= 1
             raise EmbeddingProviderError(self._error)
         return await self._delegate.embed(texts)
+
+
+class KeywordEmbedder:
+    """Controllable 1536-dim embeddings: any text containing a keyword
+    gets that keyword's axis set to 1.0, everything else 0.05 — so
+    vector-nearest results are deterministic and semantically meaningful
+    for search assertions (unlike the hash-based DeterministicEmbedder)."""
+
+    def __init__(self, *keywords: str) -> None:
+        self._keywords = [k.lower() for k in keywords]
+        self.calls: list[list[str]] = []
+
+    async def embed(self, texts: list[str]) -> list[list[float]]:
+        self.calls.append(list(texts))
+        return [self._vector(t) for t in texts]
+
+    def _vector(self, text: str) -> list[float]:
+        lowered = text.lower()
+        return [
+            1.0 if keyword in lowered else 0.05 for keyword in self._keywords
+        ] + [0.05] * (EMBEDDING_DIMENSIONS - len(self._keywords))

@@ -53,6 +53,10 @@ class Permission:
     SOURCE_READ = "source.read"
     SOURCE_RETRY = "source.retry"
 
+    # Search (research module, spec #21, ticket #25)
+    SEARCH_TEXT = "search.text"
+    SEARCH_VECTOR = "search.vector"
+
 
 ALL_PERMISSIONS = frozenset(
     value for name, value in vars(Permission).items() if name.isupper()
@@ -104,6 +108,14 @@ SOURCE_PERMISSIONS = frozenset(
     }
 )
 
+# Read-level roles search too (spec #21 user story 13).
+SEARCH_PERMISSIONS = frozenset(
+    {
+        Permission.SEARCH_TEXT,
+        Permission.SEARCH_VECTOR,
+    }
+)
+
 ORG_BASE_PERMISSIONS = frozenset(
     {
         Permission.ORG_READ,
@@ -148,6 +160,7 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
         | TAG_PERMISSIONS
         | NOTEBOOK_PERMISSIONS
         | SOURCE_PERMISSIONS
+        | SEARCH_PERMISSIONS
     ),
     Role.ORG_OWNER: frozenset(
         ORG_BASE_PERMISSIONS
@@ -156,6 +169,7 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
         | TAG_PERMISSIONS
         | NOTEBOOK_PERMISSIONS
         | SOURCE_PERMISSIONS
+        | SEARCH_PERMISSIONS
         | {Permission.ORG_DELETE}
     ),
     Role.ORG_MEMBER: frozenset(
@@ -172,6 +186,7 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
         | TAG_PERMISSIONS
         | NOTEBOOK_PERMISSIONS
         | SOURCE_PERMISSIONS
+        | SEARCH_PERMISSIONS
     ),
     Role.TEAM_MEMBER: frozenset(
         {
@@ -180,10 +195,16 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
             Permission.TAG_READ,
             Permission.NOTEBOOK_READ,
             Permission.SOURCE_READ,
+            Permission.SEARCH_TEXT,
+            Permission.SEARCH_VECTOR,
         }
     ),
     Role.PROJECT_EDITOR: frozenset(
-        PROJECT_PERMISSIONS | TAG_PERMISSIONS | NOTEBOOK_PERMISSIONS | SOURCE_PERMISSIONS
+        PROJECT_PERMISSIONS
+        | TAG_PERMISSIONS
+        | NOTEBOOK_PERMISSIONS
+        | SOURCE_PERMISSIONS
+        | SEARCH_PERMISSIONS
     ),
     Role.PROJECT_VIEWER: frozenset(
         {
@@ -191,6 +212,8 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
             Permission.TAG_READ,
             Permission.NOTEBOOK_READ,
             Permission.SOURCE_READ,
+            Permission.SEARCH_TEXT,
+            Permission.SEARCH_VECTOR,
         }
     ),
 }

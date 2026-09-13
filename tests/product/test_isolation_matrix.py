@@ -662,3 +662,101 @@ async def test_rls_policies_block_cross_tenant_chunk_reads(
             assert beta == []
     finally:
         await conn.close()
+
+
+# --- §17.5: research module — Search isolation (spec #21, ticket #25) ------
+
+
+async def _tenant_processed_source(
+    seeded, tenant_ids, api, settings, *, user_key, org_key, content, embedder
+) -> str:
+    """A processed source in the given tenant's project, embedded with the
+    caller's fake so cross-tenant vector comparisons are meaningful."""
+    from modules.platform.infrastructure.db import create_engine
+    from modules.research.infrastructure.dispatcher import drain_pending_sources
+
+    notebook = await api.post(
+        f"/projects/{tenant_ids[org_key]['project']}/notebooks",
+        json={"name": f"search-probe-{user_key}"},
+        headers=auth_headers(seeded[user_key]),
+    )
+    assert notebook.status_code == 201, notebook.text
+    created = await api.post(
+        f"/projects/{tenant_ids[org_key]['project']}/sources",
+        json={
+            "notebook_id": notebook.json()["id"],
+            "title": f"search-probe-{user_key}",
+            "content": content,
+        },
+        headers=auth_headers(seeded[user_key]),
+    )
+    assert created.status_code == 202, created.text
+    source_id = created.json()["id"]
+    engine = create_engine(settings.database_dsn)
+    try:
+        assert (await drain_pending_sources(engine, embedder=embedder)) >= 1
+    finally:
+        await engine.dispose()
+    return source_id
+
+
+async def test_cross_tenant_search_denied(seeded, tenant_ids, api) -> None:
+    """Probing tenant cannot address Alpha's project at all — the
+    tenant-safe 404 covers both search endpoints."""
+    for user_key in ("b1", "b2"):
+        for endpoint in ("text", "vector"):
+            assert (await api.get(
+                f"/projects/{tenant_ids['A']['project']}/search/{endpoint}",
+                params={"q": "grooming"},
+                headers=auth_headers(seeded[user_key]),
+            )).status_code == 404, f"{user_key} searched Alpha's project"
+
+
+async def test_search_returns_no_cross_tenant_rows(seeded, tenant_ids, api, settings) -> None:
+    """Alpha and Beta hold sources with the SAME keyword. Alpha's member
+    searching Alpha's project must see only Alpha's source — in both
+    text and vector search — even though Beta's chunk vectors are the
+    closest possible match (same keyword space)."""
+    from tests.product.fakes import KeywordEmbedder
+
+    embedder = KeywordEmbedder("grooming")
+    content = "grooming prices and full grooming services. " * 100
+    alpha_source = await _tenant_processed_source(
+        seeded, tenant_ids, api, settings,
+        user_key="a1", org_key="A", content=content, embedder=embedder,
+    )
+    beta_source = await _tenant_processed_source(
+        seeded, tenant_ids, api, settings,
+        user_key="b1", org_key="B", content=content, embedder=embedder,
+    )
+    # vector search embeds the query with the same fake as the chunks
+    api.app.state.research_embedder = embedder
+
+    text_hits = (await api.get(
+        f"/projects/{tenant_ids['A']['project']}/search/text",
+        params={"q": "grooming"},
+        headers=auth_headers(seeded["a1"]),
+    )).json()
+    assert len(text_hits) >= 1
+    # probe sources from earlier runs may still match; the property is
+    # that Alpha's hit is there and NO Beta source leaks in
+    assert alpha_source in {h["source_id"] for h in text_hits}
+    assert beta_source not in {h["source_id"] for h in text_hits}
+
+    vector_hits = (await api.get(
+        f"/projects/{tenant_ids['A']['project']}/search/vector",
+        params={"q": "grooming"},
+        headers=auth_headers(seeded["a1"]),
+    )).json()
+    assert len(vector_hits) >= 1
+    assert alpha_source in {h["source_id"] for h in vector_hits}
+    assert beta_source not in {h["source_id"] for h in vector_hits}
+
+    # control: Beta's own member searching Beta's project sees Beta's copy
+    beta_hits = (await api.get(
+        f"/projects/{tenant_ids['B']['project']}/search/text",
+        params={"q": "grooming"},
+        headers=auth_headers(seeded["b1"]),
+    )).json()
+    assert beta_source in {h["source_id"] for h in beta_hits}
+    assert alpha_source not in {h["source_id"] for h in beta_hits}

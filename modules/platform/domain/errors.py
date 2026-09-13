@@ -35,6 +35,11 @@ class ConflictError(PlatformError):
     """The request conflicts with current state (duplicate invite, etc.)."""
 
 
+class ServiceUnavailableError(PlatformError):
+    """A dependency is not configured or unavailable (embedding model,
+    external provider). Retry later or configure the environment."""
+
+
 class InvitationInvalidError(PlatformError):
     """Token unknown, expired, or already consumed."""
 

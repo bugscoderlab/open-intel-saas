@@ -9,6 +9,7 @@ from modules.platform.domain.errors import (
     NotFoundError,
     PlatformError,
     PrincipalResolutionError,
+    ServiceUnavailableError,
     TokenVerificationError,
 )
 
@@ -22,4 +23,5 @@ __all__ = [
     "ConflictError",
     "InvitationInvalidError",
     "InvitationEmailMismatchError",
+    "ServiceUnavailableError",
 ]

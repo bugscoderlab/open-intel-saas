@@ -76,3 +76,15 @@ class SourceChunk:
     # step (ticket #24); None only for rows written before 0010 / when
     # embedding is not yet configured.
     embedding: list[float] | None = None
+
+
+@dataclass(frozen=True)
+class SearchHit:
+    """One search result (ticket #25). The shape is deliberately small:
+    source id, title, snippet, score. Tenant scope never appears in a
+    field — it is part of the query predicate, never a post-filter."""
+
+    source_id: UUID
+    title: str
+    snippet: str
+    score: float

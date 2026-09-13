@@ -11,7 +11,7 @@ from typing import Protocol
 from uuid import UUID
 
 from modules.platform.domain.unit_of_work import PlatformUnit
-from modules.research.domain.entities import Notebook, Source, SourceChunk
+from modules.research.domain.entities import Notebook, SearchHit, Source, SourceChunk
 
 
 class Notebooks(Protocol):
@@ -70,9 +70,33 @@ class SourceChunks(Protocol):
     ) -> list[SourceChunk]: ...
 
 
+class Search(Protocol):
+    """Tenant-scoped search (ticket #25). The scope is a mandatory query
+    predicate on every search — authorization happens BEFORE retrieval,
+    similarity/ranking is computed only within the tenant's rows."""
+
+    async def search_text(
+        self,
+        organization_id: UUID,
+        project_id: UUID,
+        *,
+        query: str,
+        limit: int,
+    ) -> list[SearchHit]: ...
+    async def search_vector(
+        self,
+        organization_id: UUID,
+        project_id: UUID,
+        *,
+        query_vector: list[float],
+        limit: int,
+    ) -> list[SearchHit]: ...
+
+
 class ResearchUnit(PlatformUnit, Protocol):
     """One transaction worth of platform + research repositories."""
 
     notebooks: Notebooks
     sources: Sources
     source_chunks: SourceChunks
+    search: Search

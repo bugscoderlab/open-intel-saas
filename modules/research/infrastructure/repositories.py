@@ -10,11 +10,16 @@ plan §8.2).
 from datetime import UTC, datetime
 from uuid import UUID
 
-from sqlalchemy import delete, insert, select, update
+from sqlalchemy import delete, insert, select, text, update
 from sqlalchemy.engine import Row
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from modules.research.domain.entities import Notebook, Source, SourceChunk
+from modules.research.domain.entities import (
+    Notebook,
+    SearchHit,
+    Source,
+    SourceChunk,
+)
 from modules.research.infrastructure import db as tables
 
 
@@ -252,3 +257,105 @@ class SqlSourceChunks:
             .order_by(tables.source_chunks.c.chunk_index)
         )
         return [_row_to_chunk(row) for row in result.all()]
+
+
+# --- Search (ticket #25) ----------------------------------------------------
+#
+# tsvector / pgvector expressions are impractical through the Core table
+# API, so search runs parameterized raw SQL — the tenant scope is in the
+# WHERE clause either way, never a post-filter.
+
+_TEXT_SEARCH_SQL = """
+select s.id::text as source_id, s.title,
+       ts_headline(
+           'english', coalesce(s.full_text, ''),
+           plainto_tsquery('english', :query),
+           'StartSel=<<<,StopSel=>>>'
+       ) as snippet,
+       ts_rank_cd(
+           to_tsvector('english', s.title || ' ' || coalesce(s.full_text, '')),
+           plainto_tsquery('english', :query)
+       )::float8 as score
+from research.sources s
+where s.organization_id = cast(:organization_id as uuid)
+  and s.project_id = cast(:project_id as uuid)
+  and s.status = 'completed'
+  and to_tsvector('english', s.title || ' ' || coalesce(s.full_text, ''))
+      @@ plainto_tsquery('english', :query)
+order by score desc
+limit cast(:limit as int)
+"""
+
+_VECTOR_SEARCH_SQL = """
+select s.id::text as source_id, s.title, c.content as snippet,
+       (1 - (c.embedding <=> cast(:query_vector as extensions.vector)))::float8
+           as score
+from research.source_chunks c
+join research.sources s on s.id = c.source_id
+where c.organization_id = cast(:organization_id as uuid)
+  and c.project_id = cast(:project_id as uuid)
+  and c.embedding is not null
+order by c.embedding <=> cast(:query_vector as extensions.vector)
+limit cast(:limit as int)
+"""
+
+
+def _clean_snippet(snippet: str) -> str:
+    return snippet.replace("<<<", "").replace(">>>", "").strip()
+
+
+def _hit_row(row: dict) -> SearchHit:
+    return SearchHit(
+        source_id=UUID(row["source_id"]),
+        title=row["title"],
+        snippet=_clean_snippet(row["snippet"]),
+        score=float(row["score"]),
+    )
+
+
+class SqlSearch:
+    """Search repository: Postgres-native tsvector full-text and pgvector
+    cosine similarity, both scoped to (organization_id, project_id) in
+    the query predicate — ranking happens only within the tenant's rows."""
+
+    def __init__(self, session: AsyncSession) -> None:
+        self._session = session
+
+    async def search_text(
+        self,
+        organization_id: UUID,
+        project_id: UUID,
+        *,
+        query: str,
+        limit: int,
+    ) -> list[SearchHit]:
+        result = await self._session.execute(
+            text(_TEXT_SEARCH_SQL),
+            {
+                "organization_id": str(organization_id),
+                "project_id": str(project_id),
+                "query": query,
+                "limit": limit,
+            },
+        )
+        return [_hit_row(dict(row)) for row in result.mappings()]
+
+    async def search_vector(
+        self,
+        organization_id: UUID,
+        project_id: UUID,
+        *,
+        query_vector: list[float],
+        limit: int,
+    ) -> list[SearchHit]:
+        literal = "[" + ",".join(repr(float(v)) for v in query_vector) + "]"
+        result = await self._session.execute(
+            text(_VECTOR_SEARCH_SQL),
+            {
+                "organization_id": str(organization_id),
+                "project_id": str(project_id),
+                "query_vector": literal,
+                "limit": limit,
+            },
+        )
+        return [_hit_row(dict(row)) for row in result.mappings()]

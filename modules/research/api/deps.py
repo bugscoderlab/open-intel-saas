@@ -19,6 +19,7 @@ from modules.platform.api.deps import (
     map_error,
 )
 from modules.platform.application.errors import PlatformError
+from modules.research.domain.embedder import Embedder
 from modules.research.domain.unit_of_work import ResearchUnit
 
 
@@ -38,12 +39,28 @@ async def get_research_unit(request: Request) -> AsyncIterator[ResearchUnit]:
 
 ResearchUnitDep = Annotated[ResearchUnit, Depends(get_research_unit)]
 
+
+async def get_search_embedder(request: Request) -> Embedder | None:
+    """The pipeline's embedder, provided by the composition root on
+    app.state (Esperanto in serve.py, a deterministic fake in tests).
+
+    Returns None when absent rather than raising: FastAPI resolves
+    dependencies outside the @endpoint error wrapper, so a raise here
+    would escape as a bare 500. The service turns None into a typed
+    503 inside the wrapper's reach."""
+    return getattr(request.app.state, "research_embedder", None)
+
+
+SearchEmbedderDep = Annotated[Embedder, Depends(get_search_embedder)]
+
 __all__ = [
     "PrincipalDep",
     "AuthzDep",
     "ResearchUnitDep",
+    "SearchEmbedderDep",
     "get_principal",
     "get_authz",
     "get_research_unit",
+    "get_search_embedder",
     "map_error",
 ]

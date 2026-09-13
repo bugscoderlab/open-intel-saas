@@ -44,3 +44,10 @@ class SourceResponse(BaseModel):
     type: str
     status: str
     error: str | None
+
+
+class SearchHitResponse(BaseModel):
+    source_id: UUID
+    title: str
+    snippet: str
+    score: float
