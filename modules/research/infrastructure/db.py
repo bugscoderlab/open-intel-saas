@@ -6,6 +6,7 @@ registers on the platform metadata so cross-schema foreign keys resolve;
 no DDL is emitted from metadata — repositories only read/write.
 """
 
+from pgvector.sqlalchemy import Vector
 from sqlalchemy import UUID as SAUUID
 from sqlalchemy import (
     Boolean,
@@ -81,6 +82,8 @@ source_chunks = Table(
     ),
     Column("chunk_index", Integer, nullable=False),
     Column("content", Text, nullable=False),
+    # extensions.vector(1536) per plan §9; added by migration 0010.
+    Column("embedding", Vector(1536), nullable=True),
     Index("source_chunks_project_id_idx", "project_id"),
     Index("source_chunks_organization_id_idx", "organization_id"),
     Index("source_chunks_source_id_idx", "source_id"),

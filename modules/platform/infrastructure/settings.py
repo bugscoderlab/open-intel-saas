@@ -33,6 +33,12 @@ class Settings:
         invitation_base_url: Public shell URL used to build accept links.
         resend_api_key: When set, invitation email goes through Resend;
             otherwise the console provider logs it (dev default).
+        embedding_provider: Embedding provider for the research pipeline
+            (Esperanto name, e.g. "openai"). Empty = embeddings disabled:
+            sources land failed/retryable rather than blocking ingestion.
+        embedding_model: Embedding model name (e.g. "text-embedding-3-small").
+        embedding_api_key: Optional provider key; empty = the provider's
+            standard env var applies (spec #21, ticket #24).
         seed_password: Password for users created by ``make seed``.
     """
 
@@ -44,6 +50,9 @@ class Settings:
     jwt_secret: str = ""
     invitation_base_url: str = "http://localhost:3000"
     resend_api_key: str = ""
+    embedding_provider: str = ""
+    embedding_model: str = ""
+    embedding_api_key: str = ""
     seed_password: str = "seed-password-change-me"
 
     @classmethod
@@ -62,6 +71,9 @@ class Settings:
                 "OPEN_INTEL_INVITATION_BASE_URL", "http://localhost:3000"
             ).rstrip("/"),
             resend_api_key=environ.get("RESEND_API_KEY", ""),
+            embedding_provider=environ.get("OPEN_INTEL_EMBEDDING_PROVIDER", ""),
+            embedding_model=environ.get("OPEN_INTEL_EMBEDDING_MODEL", ""),
+            embedding_api_key=environ.get("OPEN_INTEL_EMBEDDING_API_KEY", ""),
             seed_password=environ.get(
                 "OPEN_INTEL_SEED_PASSWORD", "seed-password-change-me"
             ),

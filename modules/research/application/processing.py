@@ -22,6 +22,8 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from modules.platform.application.errors import NotFoundError
 from modules.platform.domain.entities import OutboxEvent
+from modules.research.application.errors import EmbeddingProviderError
+from modules.research.domain.embedder import EMBEDDING_DIMENSIONS, Embedder
 from modules.research.domain.entities import (
     STATUS_COMPLETED,
     STATUS_FAILED,
@@ -79,19 +81,44 @@ class SourceProcessingError(Exception):
     recorded on the source row and surfaced through the status endpoint."""
 
 
+async def embed_chunks(
+    embedder: Embedder, contents: list[str]
+) -> list[list[float]]:
+    """Embed chunk contents, validating the provider contract before any
+    row write: one vector per chunk, each vector(1536) (plan §9)."""
+    vectors = await embedder.embed(contents)
+    if len(vectors) != len(contents):
+        raise EmbeddingProviderError(
+            f"embedding provider returned {len(vectors)} vectors"
+            f" for {len(contents)} chunks"
+        )
+    normalized: list[list[float]] = []
+    for vector in vectors:
+        values = [float(v) for v in vector]
+        if len(values) != EMBEDDING_DIMENSIONS:
+            raise EmbeddingProviderError(
+                f"embedding provider returned dimension {len(values)},"
+                f" expected {EMBEDDING_DIMENSIONS}"
+            )
+        normalized.append(values)
+    return normalized
+
+
 async def process_text_source(
     unit: ResearchUnit,
     *,
     organization_id: UUID,
     project_id: UUID,
     source_id: UUID,
+    embedder: Embedder,
 ) -> None:
     """Run the text pipeline for one source inside the caller's unit.
 
-    Everything — status flip, chunk replace, completion event — commits in
-    the dispatcher's single transaction. Idempotent under repeated
-    execution: chunks are delete-and-reinsert, so reprocessing yields the
-    same rows.
+    Everything — status flip, chunk + embedding replace, completion
+    event — commits in the dispatcher's single transaction. Idempotent
+    under repeated execution: chunks are delete-and-reinsert, so
+    reprocessing yields the same rows. Embedding failures are typed and
+    leave the source failed/retryable (never bare exceptions).
     """
     source = await unit.sources.get(organization_id, project_id, source_id)
     if source is None:
@@ -105,6 +132,7 @@ async def process_text_source(
         raise SourceProcessingError("source has no text to process")
 
     contents = chunk_text(source.full_text)
+    vectors = await embed_chunks(embedder, contents)
     chunks = [
         SourceChunk(
             id=uuid4(),
@@ -114,8 +142,9 @@ async def process_text_source(
             source_id=source_id,
             chunk_index=index,
             content=content,
+            embedding=vector,
         )
-        for index, content in enumerate(contents)
+        for index, (content, vector) in enumerate(zip(contents, vectors))
     ]
     await unit.source_chunks.replace_for_source(
         organization_id, project_id, source_id, source.notebook_id, chunks
@@ -180,6 +209,7 @@ __all__ = [
     "MIN_CHUNK_SIZE",
     "SourceProcessingError",
     "chunk_text",
+    "embed_chunks",
     "fail_text_source",
     "process_text_source",
     "token_count",

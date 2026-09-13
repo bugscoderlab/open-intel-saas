@@ -195,6 +195,7 @@ def _row_to_chunk(row: Row) -> SourceChunk:
         source_id=row.source_id,
         chunk_index=row.chunk_index,
         content=row.content,
+        embedding=list(row.embedding) if row.embedding is not None else None,
     )
 
 
@@ -232,6 +233,7 @@ class SqlSourceChunks:
                         "source_id": source_id,
                         "chunk_index": index,
                         "content": chunk.content,
+                        "embedding": chunk.embedding,
                     }
                     for index, chunk in enumerate(chunks)
                 ],

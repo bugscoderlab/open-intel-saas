@@ -72,3 +72,7 @@ class SourceChunk:
     source_id: UUID
     chunk_index: int
     content: str
+    # vector(EMBEDDING_DIMENSIONS), written by the pipeline's embedding
+    # step (ticket #24); None only for rows written before 0010 / when
+    # embedding is not yet configured.
+    embedding: list[float] | None = None

@@ -237,3 +237,34 @@ async def api(settings: Settings):
 
 def auth_headers(user: TestUser) -> dict:
     return {"Authorization": f"Bearer {user.access_token}"}
+
+
+@pytest_asyncio.fixture
+async def org(api, owner: TestUser, settings) -> AsyncIterator[str]:
+    """research_org_cleanup: an org for a test; teardown also sweeps
+    outbox events (no FK from outbox_events to organizations, so org
+    delete alone would litter the managed project). Shared by the
+    research HTTP-seam tests; files that need a differently shaped org
+    define their own local fixture, which shadows this one."""
+    import asyncpg
+
+    response = await api.post(
+        "/organizations",
+        json={"name": f"Org {uuid.uuid4().hex[:8]}"},
+        headers=auth_headers(owner),
+    )
+    assert response.status_code == 201, response.text
+    org_id = response.json()["id"]
+    yield org_id
+    conn = await asyncpg.connect(settings.database_dsn_asyncpg, timeout=30)
+    try:
+        await conn.execute(
+            "delete from public.outbox_events"
+            " where payload->>'organization_id' = $1",
+            org_id,
+        )
+        await conn.execute(
+            "delete from public.organizations where id = $1::uuid", org_id
+        )
+    finally:
+        await conn.close()

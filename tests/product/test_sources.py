@@ -22,11 +22,12 @@ import pytest_asyncio
 pytestmark = pytest.mark.asyncio
 
 from tests.product.conftest import TestUser, auth_headers
-
-LONG_TEXT = (
-    "The competitor offers full grooming services at escalating prices. "
-    * 500
-)  # well over 400 tokens under both tiktoken and the word-count fallback
+from tests.product.research_helpers import (
+    LONG_TEXT,
+    create_text_source,
+    new_notebook,
+    new_project,
+)
 
 
 @pytest_asyncio.fixture
@@ -35,78 +36,22 @@ async def owner(user_factory) -> TestUser:
 
 
 @pytest_asyncio.fixture
-async def org(api, owner: TestUser, settings) -> AsyncIterator[str]:
-    """An org for this test; teardown also sweeps outbox events (no FK
-    from outbox_events to organizations, so org delete alone would
-    litter the managed project)."""
-    response = await api.post(
-        "/organizations",
-        json={"name": f"Org {uuid.uuid4().hex[:8]}"},
-        headers=auth_headers(owner),
-    )
-    assert response.status_code == 201, response.text
-    org_id = response.json()["id"]
-    yield org_id
-    conn = await asyncpg.connect(settings.database_dsn_asyncpg, timeout=30)
-    try:
-        await conn.execute(
-            "delete from public.outbox_events"
-            " where payload->>'organization_id' = $1",
-            org_id,
-        )
-        await conn.execute(
-            "delete from public.organizations where id = $1::uuid", org_id
-        )
-    finally:
-        await conn.close()
-
-
-@pytest_asyncio.fixture
 async def drain(settings) -> AsyncIterator:
     """Run the in-process dispatcher on demand — deterministic processing
-    without relying on the serve.py background loop."""
+    without relying on the serve.py background loop. The embedder is the
+    deterministic fake (ticket #24 seam): no real provider APIs."""
     from modules.platform.infrastructure.db import create_engine
     from modules.research.infrastructure.dispatcher import drain_pending_sources
+    from tests.product.fakes import DeterministicEmbedder
 
     engine = create_engine(settings.database_dsn)
+    embedder = DeterministicEmbedder()
 
     async def _drain() -> int:
-        return await drain_pending_sources(engine)
+        return await drain_pending_sources(engine, embedder=embedder)
 
     yield _drain
     await engine.dispose()
-
-
-async def _project(api, owner: TestUser, org: str) -> str:
-    response = await api.post(
-        f"/organizations/{org}/projects",
-        json={"name": f"Project {uuid.uuid4().hex[:8]}"},
-        headers=auth_headers(owner),
-    )
-    assert response.status_code == 201, response.text
-    return response.json()["id"]
-
-
-async def _notebook(api, owner: TestUser, project_id: str) -> str:
-    response = await api.post(
-        f"/projects/{project_id}/notebooks",
-        json={"name": "Evidence"},
-        headers=auth_headers(owner),
-    )
-    assert response.status_code == 201, response.text
-    return response.json()["id"]
-
-
-async def _create_source(
-    api, owner: TestUser, project_id: str, notebook_id: str, content: str
-) -> dict:
-    response = await api.post(
-        f"/projects/{project_id}/sources",
-        json={"notebook_id": notebook_id, "title": "Pricing page", "content": content},
-        headers=auth_headers(owner),
-    )
-    assert response.status_code == 202, response.text
-    return response.json()
 
 
 async def _invite_project_viewer(
@@ -162,10 +107,10 @@ async def _chunk_rows(settings, source_id: str) -> list[dict]:
 async def test_paste_text_source_queues_then_dispatcher_completes(
     api, owner: TestUser, org: str, settings, drain
 ) -> None:
-    project_id = await _project(api, owner, org)
-    notebook_id = await _notebook(api, owner, project_id)
+    project_id = await new_project(api, owner, org)
+    notebook_id = await new_notebook(api, owner, project_id)
 
-    source = await _create_source(api, owner, project_id, notebook_id, LONG_TEXT)
+    source = await create_text_source(api, owner, project_id, notebook_id, LONG_TEXT)
     assert source["status"] == "queued"  # immediate, 202 — never blocks
     assert source["type"] == "text"
     assert source["organization_id"] == org
@@ -212,9 +157,9 @@ async def test_paste_text_source_queues_then_dispatcher_completes(
 async def test_short_text_yields_a_single_chunk(
     api, owner: TestUser, org: str, settings, drain
 ) -> None:
-    project_id = await _project(api, owner, org)
-    notebook_id = await _notebook(api, owner, project_id)
-    source = await _create_source(api, owner, project_id, notebook_id, "tiny note")
+    project_id = await new_project(api, owner, org)
+    notebook_id = await new_notebook(api, owner, project_id)
+    source = await create_text_source(api, owner, project_id, notebook_id, "tiny note")
 
     assert (await drain()) >= 1
 
@@ -228,9 +173,9 @@ async def test_retry_after_induced_failure_recovers_and_is_idempotent(
 ) -> None:
     from modules.research.application import processing
 
-    project_id = await _project(api, owner, org)
-    notebook_id = await _notebook(api, owner, project_id)
-    source = await _create_source(api, owner, project_id, notebook_id, LONG_TEXT)
+    project_id = await new_project(api, owner, org)
+    notebook_id = await new_notebook(api, owner, project_id)
+    source = await create_text_source(api, owner, project_id, notebook_id, LONG_TEXT)
     source_id = source["id"]
 
     def _boom(_text: str) -> list[str]:
@@ -296,8 +241,8 @@ async def test_retry_after_induced_failure_recovers_and_is_idempotent(
 async def test_unauthenticated_requests_are_rejected(
     api, owner: TestUser, org: str
 ) -> None:
-    project_id = await _project(api, owner, org)
-    notebook_id = await _notebook(api, owner, project_id)
+    project_id = await new_project(api, owner, org)
+    notebook_id = await new_notebook(api, owner, project_id)
 
     assert (await api.post(
         f"/projects/{project_id}/sources",
@@ -317,10 +262,10 @@ async def test_viewer_reads_status_but_cannot_create_or_retry(
     api, owner: TestUser, org: str, user_factory, drain
 ) -> None:
     viewer = await user_factory("source-viewer")
-    project_id = await _project(api, owner, org)
-    notebook_id = await _notebook(api, owner, project_id)
+    project_id = await new_project(api, owner, org)
+    notebook_id = await new_notebook(api, owner, project_id)
     await _invite_project_viewer(api, owner, org, viewer, project_id)
-    source = await _create_source(api, owner, project_id, notebook_id, LONG_TEXT)
+    source = await create_text_source(api, owner, project_id, notebook_id, LONG_TEXT)
     assert (await drain()) >= 1
 
     assert (await api.get(
@@ -352,9 +297,9 @@ async def test_cross_tenant_status_and_retry_are_denied(
         headers=auth_headers(other),
     )).json()["id"]
 
-    project_id = await _project(api, owner, org)
-    notebook_id = await _notebook(api, owner, project_id)
-    source = await _create_source(api, owner, project_id, notebook_id, LONG_TEXT)
+    project_id = await new_project(api, owner, org)
+    notebook_id = await new_notebook(api, owner, project_id)
+    source = await create_text_source(api, owner, project_id, notebook_id, LONG_TEXT)
 
     # a member of another Organization cannot read, list, or retry the job:
     # the tenant-safe answer to guessed IDs is 404

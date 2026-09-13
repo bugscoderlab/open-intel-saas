@@ -15,7 +15,6 @@ the production poll loop, wired in the composition root (serve.py).
 """
 
 import asyncio
-from typing import Protocol
 from uuid import UUID
 
 from loguru import logger
@@ -26,23 +25,9 @@ from modules.research.application.processing import (
     fail_text_source,
     process_text_source,
 )
+from modules.research.domain.embedder import Embedder
 from modules.research.domain.events import SOURCE_SUBMITTED
-from modules.research.domain.unit_of_work import ResearchUnit
 from modules.research.infrastructure.unit_of_work import SqlResearchUnit
-
-
-class Pipeline(Protocol):
-    """The processing entry point the dispatcher drives. Protocol (not a
-    type alias) so mypy checks the concrete signature at the call site."""
-
-    async def __call__(
-        self,
-        unit: ResearchUnit,
-        *,
-        organization_id: UUID,
-        project_id: UUID,
-        source_id: UUID,
-    ) -> None: ...
 
 
 async def _claim_events(
@@ -91,10 +76,12 @@ async def _record_failure(
 async def drain_pending_sources(
     engine: AsyncEngine,
     *,
+    embedder: Embedder,
     limit: int = 25,
-    pipeline: Pipeline = process_text_source,
 ) -> int:
-    """Process up to ``limit`` unpublished SourceSubmitted events.
+    """Process up to ``limit`` unpublished SourceSubmitted events with the
+    given embedder (the composition seam: Esperanto in serve.py, a
+    deterministic fake in tests — no real provider APIs).
     Returns the number of events consumed (succeeded or recorded-failed)."""
     events = await _claim_events(engine, limit=limit)
     for event_id, payload in events:
@@ -103,11 +90,12 @@ async def drain_pending_sources(
         source_id = UUID(payload["source_id"])
         try:
             async with SqlResearchUnit(engine) as unit:
-                await pipeline(
+                await process_text_source(
                     unit,
                     organization_id=organization_id,
                     project_id=project_id,
                     source_id=source_id,
+                    embedder=embedder,
                 )
                 await unit.outbox.mark_published(event_id)
                 await unit.commit()
@@ -122,13 +110,14 @@ async def drain_pending_sources(
 async def run_dispatcher(
     engine: AsyncEngine,
     *,
+    embedder: Embedder,
     poll_interval_seconds: float = 2.0,
     batch_size: int = 25,
 ) -> None:
     """The production loop: drain, sleep, repeat. Runs until cancelled."""
     while True:
         try:
-            await drain_pending_sources(engine, limit=batch_size)
+            await drain_pending_sources(engine, embedder=embedder, limit=batch_size)
         except Exception:  # noqa: BLE001 — the loop must outlive a bad iteration
             logger.exception("research dispatcher iteration failed")
         await asyncio.sleep(poll_interval_seconds)

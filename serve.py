@@ -29,6 +29,7 @@ from modules.platform.infrastructure.settings import Settings  # noqa: E402
 from modules.platform.infrastructure.unit_of_work import SqlPlatformUnit  # noqa: E402
 from modules.research.api.routers import build_research_router  # noqa: E402
 from modules.research.infrastructure.dispatcher import run_dispatcher  # noqa: E402
+from modules.research.infrastructure.embedder import EsperantoEmbedder  # noqa: E402
 from modules.research.infrastructure.unit_of_work import SqlResearchUnit  # noqa: E402
 
 settings = Settings.from_env()
@@ -66,10 +67,18 @@ app = create_app(
 
 if engine is not None:
     dispatcher_engine = engine  # narrow for the closure (mypy)
+    # Provider-agnostic embeddings (spec #21): Settings-driven, Esperanto
+    # underneath. Unconfigured is fine at boot — the pipeline raises a
+    # typed error per source, which lands failed and retryable.
+    embedder = EsperantoEmbedder(
+        provider=settings.embedding_provider,
+        model_name=settings.embedding_model,
+        api_key=settings.embedding_api_key or None,
+    )
 
     @app.on_event("startup")
     async def _start_research_dispatcher() -> None:
         """Off-request source processing (ADR-004): the in-process
         dispatcher drains SourceSubmitted outbox events until shutdown.
         Tests drive the same drain function directly instead."""
-        asyncio.create_task(run_dispatcher(dispatcher_engine))
+        asyncio.create_task(run_dispatcher(dispatcher_engine, embedder=embedder))

@@ -541,3 +541,124 @@ async def test_rls_policies_block_cross_tenant_notebook_reads(
             assert cross == []
     finally:
         await conn.close()
+
+
+# --- §17.5: research module — Source/chunk isolation (spec #21, #24) -------
+
+
+async def _alpha_processed_source(seeded, tenant_ids, api, settings) -> str:
+    """A chunked + embedded source in Alpha's project (processed by the
+    real pipeline with the deterministic fake embedder — no provider)."""
+    from modules.platform.infrastructure.db import create_engine
+    from modules.research.infrastructure.dispatcher import drain_pending_sources
+    from tests.product.fakes import DeterministicEmbedder
+
+    notebook = await api.post(
+        f"/projects/{tenant_ids['A']['project']}/notebooks",
+        json={"name": "isolation-probe-source"},
+        headers=auth_headers(seeded["a1"]),
+    )
+    assert notebook.status_code == 201, notebook.text
+    created = await api.post(
+        f"/projects/{tenant_ids['A']['project']}/sources",
+        json={
+            "notebook_id": notebook.json()["id"],
+            "title": "isolation-probe-source",
+            "content": "cross-tenant probe content " * 100,
+        },
+        headers=auth_headers(seeded["a1"]),
+    )
+    assert created.status_code == 202, created.text
+    source_id = created.json()["id"]
+
+    engine = create_engine(settings.database_dsn)
+    try:
+        processed = await drain_pending_sources(engine, embedder=DeterministicEmbedder())
+        assert processed >= 1
+    finally:
+        await engine.dispose()
+    return source_id
+
+
+async def test_cross_tenant_source_and_chunk_reads_denied(
+    seeded, tenant_ids, api, settings
+) -> None:
+    """Alpha's embedded chunks: the other tenant cannot read the job over
+    the API, and the service-role repositories return nothing under a
+    foreign tenant scope."""
+    from modules.platform.infrastructure.db import create_engine
+    from modules.research.infrastructure.unit_of_work import SqlResearchUnit
+
+    source_id = await _alpha_processed_source(seeded, tenant_ids, api, settings)
+
+    for user_key in ("b1", "b2"):
+        assert (await api.get(
+            f"/projects/{tenant_ids['A']['project']}/sources/{source_id}",
+            headers=auth_headers(seeded[user_key]),
+        )).status_code == 404, f"{user_key} read Alpha's source status"
+
+    engine = create_engine(settings.database_dsn)
+    try:
+        async with SqlResearchUnit(engine) as unit:
+            beta_scope_chunks = await unit.source_chunks.list_for_source(
+                UUID(tenant_ids["B"]["org"]),
+                UUID(tenant_ids["B"]["project"]),
+                UUID(source_id),
+            )
+            assert beta_scope_chunks == []
+            alpha_scope_chunks = await unit.source_chunks.list_for_source(
+                UUID(tenant_ids["A"]["org"]),
+                UUID(tenant_ids["A"]["project"]),
+                UUID(source_id),
+            )
+            assert len(alpha_scope_chunks) >= 1
+            assert all(c.embedding is not None for c in alpha_scope_chunks)
+    finally:
+        await engine.dispose()
+
+
+async def test_rls_policies_block_cross_tenant_chunk_reads(
+    seeded, tenant_ids, settings, subjects, api
+) -> None:
+    """Bypass the API and repositories entirely: as the authenticated role
+    with the user JWT, RLS on research.source_chunks (with embeddings)
+    must still deny cross-tenant rows."""
+    source_id = await _alpha_processed_source(seeded, tenant_ids, api, settings)
+    conn = await asyncpg.connect(settings.database_dsn_asyncpg, timeout=30)
+    try:
+        # Alpha's member sees own-tenant chunks only…
+        async with conn.transaction():
+            await conn.execute("set local role authenticated")
+            await conn.execute(
+                "select set_config('request.jwt.claims', $1, true)",
+                json.dumps({"sub": subjects["a1"]}),
+            )
+            org_ids = {
+                str(r["organization_id"])
+                for r in await conn.fetch(
+                    "select organization_id from research.source_chunks"
+                )
+            }
+            assert tenant_ids["A"]["org"] in org_ids
+            assert org_ids <= {tenant_ids["A"]["org"]}
+        # …and Beta's member sees none of Alpha's chunks at all.
+        async with conn.transaction():
+            await conn.execute("set local role authenticated")
+            await conn.execute(
+                "select set_config('request.jwt.claims', $1, true)",
+                json.dumps({"sub": subjects["b1"]}),
+            )
+            cross = await conn.fetch(
+                "select * from research.source_chunks"
+                " where organization_id = $1::uuid",
+                tenant_ids["A"]["org"],
+            )
+            assert cross == []
+            beta = await conn.fetch(
+                "select * from public.outbox_events"
+                " where payload->>'source_id' = $1",
+                source_id,
+            )
+            assert beta == []
+    finally:
+        await conn.close()
