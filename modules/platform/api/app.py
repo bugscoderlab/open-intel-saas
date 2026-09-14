@@ -36,6 +36,8 @@ def create_app(
     invitation_base_url: str = "http://localhost:3000",
     research_router: APIRouter | None = None,
     research_unit_factory=None,
+    competitor_router: APIRouter | None = None,
+    competitor_unit_factory=None,
 ) -> FastAPI:
     """Assemble the API. Fails to start if the platform module is absent.
 
@@ -56,6 +58,10 @@ def create_app(
         raise RuntimeError(
             "cannot start: a research router was provided without a research unit factory"
         )
+    if competitor_router is not None and competitor_unit_factory is None:
+        raise RuntimeError(
+            "cannot start: a competitor router was provided without a competitor unit factory"
+        )
 
     app = FastAPI(title="Open Intel API")
     app.state.module_states = states
@@ -65,6 +71,7 @@ def create_app(
     app.state.invitation_base_url = invitation_base_url
     app.state.unit_factory = unit_factory
     app.state.research_unit_factory = research_unit_factory
+    app.state.competitor_unit_factory = competitor_unit_factory
 
     app.add_middleware(
         CORSMiddleware,
@@ -89,4 +96,11 @@ def create_app(
         research_state = next((s for s in states if s.name == "research"), None)
         if research_state is None or research_state.enabled:
             app.include_router(research_router)
+
+    if competitor_router is not None:
+        competitor_state = next(
+            (s for s in states if s.name == "competitor_intelligence"), None
+        )
+        if competitor_state is None or competitor_state.enabled:
+            app.include_router(competitor_router)
     return app

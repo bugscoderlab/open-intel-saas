@@ -252,7 +252,7 @@ product-check:
 # non-secret publishable key). Used as the gate: by /auto-matt --phase.
 ci-local:
 	uv run ruff check modules tests/product serve.py
-	uv run python -m mypy modules/platform modules/research tests/product --ignore-missing-imports
+	uv run python -m mypy modules/platform modules/research modules/competitor_intelligence tests/product --ignore-missing-imports
 	uv run lint-imports
 	uv run pytest tests/product -q
 	cd shell && npm run lint && npm run build

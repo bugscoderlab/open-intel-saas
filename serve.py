@@ -15,6 +15,12 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+from modules.competitor_intelligence.api.routers import (  # noqa: E402
+    build_competitor_router,
+)
+from modules.competitor_intelligence.infrastructure.unit_of_work import (  # noqa: E402
+    SqlCompetitorUnit,
+)
 from modules.platform.api.app import create_app  # noqa: E402
 from modules.platform.infrastructure.db import create_engine  # noqa: E402
 from modules.platform.infrastructure.discovery import discover_modules  # noqa: E402
@@ -63,6 +69,10 @@ app = create_app(
     research_router=build_research_router() if engine is not None else None,
     research_unit_factory=(
         (lambda: SqlResearchUnit(engine)) if engine is not None else None
+    ),
+    competitor_router=build_competitor_router() if engine is not None else None,
+    competitor_unit_factory=(
+        (lambda: SqlCompetitorUnit(engine)) if engine is not None else None
     ),
 )
 
