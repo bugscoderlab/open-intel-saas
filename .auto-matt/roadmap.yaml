@@ -18,6 +18,13 @@ phases:
       - "planning/open-notebook-multiteam-saas-plan-3.md"
     mode: auto
 
+  - id: "3.5"
+    name: Unified project workspace UI
+    spec:
+      - "https://github.com/bugscoderlab/open-intel-saas/issues/36"
+      - "docs/7-DEVELOPMENT/decisions/PDR-004-single-project-workspace.md"
+    mode: auto
+
   - id: 4
     name: Collection integrations
     spec:

@@ -52,3 +52,4 @@ What this makes easier, what it makes harder, what to watch. (bullets)
 | [PDR-001](PDR-001-single-user-first.md) | Single-user first; don't preclude multi-user | Accepted |
 | [PDR-002](PDR-002-provider-agnostic-core.md) | Provider-agnostic core by default | Accepted |
 | [PDR-003](PDR-003-platform-slice-tenancy-and-seams.md) | Open Intel platform slice: tenancy enforced twice at different granularity, matrix as data, audit+outbox in-transaction, email as port, api → application → domain layering | Accepted |
+| [PDR-004](PDR-004-single-project-workspace.md) | One workspace per project — the notebook is a feature inside it, not a parallel workspace | Accepted |

@@ -1019,6 +1019,8 @@ The proposed view adds:
 
 The notebook remains one feature inside the wider project rather than becoming the whole product.
 
+> **Clarification (2026-09-14):** The two layouts above are a *before/after comparison*, not two user-facing workspaces. There is exactly one workspace — the Project (see CONTEXT.md: Project, with "Avoid: Workspace"; Market, "not a separate entity"). The three-panel research notebook (Sources/Notes/Chat) is one feature — one view — inside that project workspace, sitting alongside the competitor-intelligence views (market overview, competitors, review queue, evidence library, intelligence chat with Research/Analytics modes). The prototype's top-level layout switch exists only to compare the inherited upstream UI with the proposed UI; it must not become product navigation. The backend's separate `research` and `competitor_intelligence` modules are code organization within the modular monolith, not UX separation — Evidence is a role a Source plays, which only makes sense inside one workspace. Recorded as [PDR-004](../docs/7-DEVELOPMENT/decisions/PDR-004-single-project-workspace.md).
+
 ---
 
 ## 14. Modular architecture

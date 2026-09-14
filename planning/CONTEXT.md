@@ -40,6 +40,14 @@ _Avoid_: Scope, grant
 The trivial tenant-owned entity of the Phase 0–1 slice: per-project CRUD whose job is to prove the tenant-scoping pattern (`organization_id` + `project_id` on every row). Named to avoid collision with the Research module's Notes.
 _Avoid_: Note, memo
 
+**Workspace**:
+UI term for the Project as experienced in the product: the single screen where a team works on a project. Hosts all workspace views (market overview, competitors, review queue, notebooks, sources, search, and manage for members/tags). Not a domain entity — it *is* the Project.
+_Avoid_: Research workspace and competitor-intelligence workspace as separate places (there is exactly one; see PDR-004)
+
+**Workspace view**:
+One navigable view inside the workspace (e.g. Notebooks, Sources, Overview). Adding a capability means adding a view, never a new workspace.
+_Avoid_: Module page, sub-app
+
 ### Research
 
 **Source**:
