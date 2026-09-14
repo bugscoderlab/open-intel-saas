@@ -9,7 +9,12 @@ cross-module references (evidence targets) stay opaque UUIDs.
 from typing import Protocol
 from uuid import UUID
 
-from modules.competitor_intelligence.domain.entities import Competitor, Location
+from modules.competitor_intelligence.domain.entities import (
+    Competitor,
+    Location,
+    Observation,
+    Service,
+)
 from modules.platform.domain.unit_of_work import PlatformUnit
 
 
@@ -54,8 +59,60 @@ class Locations(Protocol):
     ) -> list[Location]: ...
 
 
+class Services(Protocol):
+    """Service catalog repository — the tenant scope is explicit on every
+    query; names dedupe case-insensitively per project."""
+
+    async def create(self, service: Service) -> None: ...
+    async def get(
+        self, organization_id: UUID, project_id: UUID, service_id: UUID
+    ) -> Service | None: ...
+    async def get_by_name(
+        self, organization_id: UUID, project_id: UUID, name: str
+    ) -> Service | None: ...
+    async def delete(
+        self, organization_id: UUID, project_id: UUID, service_id: UUID
+    ) -> None: ...
+    async def list_for_project(
+        self, organization_id: UUID, project_id: UUID
+    ) -> list[Service]: ...
+
+
+class Observations(Protocol):
+    """Observation repository — stored, never overwritten (glossary):
+    the only in-place update is the approval-state flip."""
+
+    async def create(self, observation: Observation) -> None: ...
+    async def get(
+        self, organization_id: UUID, project_id: UUID, observation_id: UUID
+    ) -> Observation | None: ...
+    async def update_state(
+        self,
+        organization_id: UUID,
+        project_id: UUID,
+        observation_id: UUID,
+        *,
+        approval_state: str,
+        superseded_by: UUID | None,
+    ) -> None: ...
+    async def list_pending_for_project(
+        self, organization_id: UUID, project_id: UUID
+    ) -> list[Observation]: ...
+    async def list_for_competitor(
+        self, organization_id: UUID, project_id: UUID, competitor_id: UUID
+    ) -> list[Observation]: ...
+    async def list_approved_for_competitor(
+        self, organization_id: UUID, project_id: UUID, competitor_id: UUID, kind: str
+    ) -> list[Observation]: ...
+    async def count_referencing_service(
+        self, organization_id: UUID, project_id: UUID, service_id: UUID
+    ) -> int: ...
+
+
 class CompetitorUnit(PlatformUnit, Protocol):
     """One transaction worth of platform + competitor repositories."""
 
     competitors: Competitors
     locations: Locations
+    services: Services
+    observations: Observations

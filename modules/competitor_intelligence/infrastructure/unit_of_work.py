@@ -6,10 +6,14 @@ from modules.competitor_intelligence.domain.unit_of_work import (
     Competitors,
     CompetitorUnit,
     Locations,
+    Observations,
+    Services,
 )
 from modules.competitor_intelligence.infrastructure.repositories import (
     SqlCompetitors,
     SqlLocations,
+    SqlObservations,
+    SqlServices,
 )
 from modules.platform.infrastructure.unit_of_work import SqlPlatformUnit
 
@@ -23,6 +27,8 @@ class SqlCompetitorUnit(SqlPlatformUnit):
         assert self._session is not None
         self.competitors: Competitors = SqlCompetitors(self._session)
         self.locations: Locations = SqlLocations(self._session)
+        self.services: Services = SqlServices(self._session)
+        self.observations: Observations = SqlObservations(self._session)
         return self
 
 

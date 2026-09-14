@@ -22,12 +22,23 @@ from modules.competitor_intelligence.api.schemas import (
     LocationCreateRequest,
     LocationResponse,
     LocationUpdateRequest,
+    ObservationCreateRequest,
+    ObservationResponse,
+    ServiceCreateRequest,
+    ServiceResponse,
 )
 from modules.competitor_intelligence.application.services import (
     competitor_service,
     location_service,
+    observation_service,
+    service_catalog_service,
 )
-from modules.competitor_intelligence.domain.entities import Competitor, Location
+from modules.competitor_intelligence.domain.entities import (
+    Competitor,
+    Location,
+    Observation,
+    Service,
+)
 from modules.platform.api.routers import endpoint
 
 
@@ -273,6 +284,8 @@ def build_competitor_router() -> APIRouter:
     router = APIRouter()
     router.include_router(build_competitors_router())
     router.include_router(build_locations_router())
+    router.include_router(build_services_router())
+    router.include_router(build_observations_router())
     return router
 
 
@@ -295,4 +308,206 @@ def _location_response(location: Location) -> LocationResponse:
         competitor_id=location.competitor_id,
         name=location.name,
         address=location.address,
+    )
+
+
+def build_services_router() -> APIRouter:
+    """Service catalog (ticket #34): canonical offerings per project."""
+    router = APIRouter(tags=["services"])
+
+    @router.post(
+        "/projects/{project_id}/services",
+        response_model=ServiceResponse,
+        status_code=201,
+    )
+    @endpoint
+    async def create_service(
+        project_id: UUID,
+        body: ServiceCreateRequest,
+        unit: CompetitorUnitDep,
+        principal: PrincipalDep,
+        authz: AuthzDep,
+    ) -> ServiceResponse:
+        service = await service_catalog_service.create_service(
+            unit, authz, principal, project_id=project_id, name=body.name
+        )
+        return _service_response(service)
+
+    @router.get(
+        "/projects/{project_id}/services", response_model=list[ServiceResponse]
+    )
+    @endpoint
+    async def list_services(
+        project_id: UUID,
+        unit: CompetitorUnitDep,
+        principal: PrincipalDep,
+        authz: AuthzDep,
+    ) -> list[ServiceResponse]:
+        services = await service_catalog_service.list_services(
+            unit, authz, principal, project_id=project_id
+        )
+        return [_service_response(s) for s in services]
+
+    @router.delete("/projects/{project_id}/services/{service_id}", status_code=204)
+    @endpoint
+    async def delete_service(
+        project_id: UUID,
+        service_id: UUID,
+        unit: CompetitorUnitDep,
+        principal: PrincipalDep,
+        authz: AuthzDep,
+    ) -> None:
+        await service_catalog_service.delete_service(
+            unit,
+            authz,
+            principal,
+            project_id=project_id,
+            service_id=service_id,
+        )
+
+    return router
+
+
+def build_observations_router() -> APIRouter:
+    """Observations + review queue (ticket #34): manual facts land
+    pending; approval supersedes differing prior values and emits
+    CompetitorChangeDetected (glossary: Change)."""
+    router = APIRouter(tags=["observations"])
+
+    @router.post(
+        "/projects/{project_id}/competitors/{competitor_id}/observations",
+        response_model=ObservationResponse,
+        status_code=201,
+    )
+    @endpoint
+    async def create_observation(
+        project_id: UUID,
+        competitor_id: UUID,
+        body: ObservationCreateRequest,
+        unit: CompetitorUnitDep,
+        principal: PrincipalDep,
+        authz: AuthzDep,
+    ) -> ObservationResponse:
+        observation = await observation_service.create_observation(
+            unit,
+            authz,
+            principal,
+            project_id=project_id,
+            competitor_id=competitor_id,
+            service_id=body.service_id,
+            location_id=body.location_id,
+            kind=body.kind,
+            price_amount=body.price_amount,
+            price_currency=body.price_currency.upper(),
+            observed_on=body.observed_on,
+        )
+        return _observation_response(observation)
+
+    @router.get(
+        "/projects/{project_id}/competitors/{competitor_id}/observations",
+        response_model=list[ObservationResponse],
+    )
+    @endpoint
+    async def list_observations(
+        project_id: UUID,
+        competitor_id: UUID,
+        unit: CompetitorUnitDep,
+        principal: PrincipalDep,
+        authz: AuthzDep,
+    ) -> list[ObservationResponse]:
+        observations = await observation_service.list_observations(
+            unit,
+            authz,
+            principal,
+            project_id=project_id,
+            competitor_id=competitor_id,
+        )
+        return [_observation_response(o) for o in observations]
+
+    @router.get(
+        "/projects/{project_id}/review-queue",
+        response_model=list[ObservationResponse],
+    )
+    @endpoint
+    async def review_queue(
+        project_id: UUID,
+        unit: CompetitorUnitDep,
+        principal: PrincipalDep,
+        authz: AuthzDep,
+    ) -> list[ObservationResponse]:
+        pending = await observation_service.review_queue(
+            unit, authz, principal, project_id=project_id
+        )
+        return [_observation_response(o) for o in pending]
+
+    @router.post(
+        "/projects/{project_id}/observations/{observation_id}/approve",
+        response_model=ObservationResponse,
+    )
+    @endpoint
+    async def approve_observation(
+        project_id: UUID,
+        observation_id: UUID,
+        unit: CompetitorUnitDep,
+        principal: PrincipalDep,
+        authz: AuthzDep,
+    ) -> ObservationResponse:
+        observation = await observation_service.approve_observation(
+            unit,
+            authz,
+            principal,
+            project_id=project_id,
+            observation_id=observation_id,
+        )
+        return _observation_response(observation)
+
+    @router.post(
+        "/projects/{project_id}/observations/{observation_id}/reject",
+        response_model=ObservationResponse,
+    )
+    @endpoint
+    async def reject_observation(
+        project_id: UUID,
+        observation_id: UUID,
+        unit: CompetitorUnitDep,
+        principal: PrincipalDep,
+        authz: AuthzDep,
+    ) -> ObservationResponse:
+        observation = await observation_service.reject_observation(
+            unit,
+            authz,
+            principal,
+            project_id=project_id,
+            observation_id=observation_id,
+        )
+        return _observation_response(observation)
+
+    return router
+
+
+def _service_response(service: Service) -> ServiceResponse:
+    return ServiceResponse(
+        id=service.id,
+        organization_id=service.organization_id,
+        project_id=service.project_id,
+        name=service.name,
+    )
+
+
+def _observation_response(observation: Observation) -> ObservationResponse:
+    return ObservationResponse(
+        id=observation.id,
+        organization_id=observation.organization_id,
+        project_id=observation.project_id,
+        competitor_id=observation.competitor_id,
+        service_id=observation.service_id,
+        location_id=observation.location_id,
+        kind=observation.kind,
+        price_amount=observation.price_amount,
+        price_currency=observation.price_currency,
+        observed_on=observation.observed_on,
+        confidence=observation.confidence,
+        extraction_version=observation.extraction_version,
+        approval_state=observation.approval_state,
+        superseded_by=observation.superseded_by,
     )

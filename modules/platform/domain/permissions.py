@@ -72,6 +72,12 @@ class Permission:
     LOCATION_READ = "location.read"
     LOCATION_UPDATE = "location.update"
     LOCATION_DELETE = "location.delete"
+    SERVICE_CREATE = "service.create"
+    SERVICE_READ = "service.read"
+    SERVICE_DELETE = "service.delete"
+    OBSERVATION_CREATE = "observation.create"
+    OBSERVATION_READ = "observation.read"
+    OBSERVATION_REVIEW = "observation.review"
 
 
 ALL_PERMISSIONS = frozenset(
@@ -159,6 +165,22 @@ LOCATION_PERMISSIONS = frozenset(
     }
 )
 
+SERVICE_PERMISSIONS = frozenset(
+    {
+        Permission.SERVICE_CREATE,
+        Permission.SERVICE_READ,
+        Permission.SERVICE_DELETE,
+    }
+)
+
+OBSERVATION_PERMISSIONS = frozenset(
+    {
+        Permission.OBSERVATION_CREATE,
+        Permission.OBSERVATION_READ,
+        Permission.OBSERVATION_REVIEW,
+    }
+)
+
 ORG_BASE_PERMISSIONS = frozenset(
     {
         Permission.ORG_READ,
@@ -207,6 +229,8 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
         | NOTE_PERMISSIONS
         | COMPETITOR_PERMISSIONS
         | LOCATION_PERMISSIONS
+        | SERVICE_PERMISSIONS
+        | OBSERVATION_PERMISSIONS
     ),
     Role.ORG_OWNER: frozenset(
         ORG_BASE_PERMISSIONS
@@ -219,6 +243,8 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
         | NOTE_PERMISSIONS
         | COMPETITOR_PERMISSIONS
         | LOCATION_PERMISSIONS
+        | SERVICE_PERMISSIONS
+        | OBSERVATION_PERMISSIONS
         | {Permission.ORG_DELETE}
     ),
     Role.ORG_MEMBER: frozenset(
@@ -239,6 +265,8 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
         | NOTE_PERMISSIONS
         | COMPETITOR_PERMISSIONS
         | LOCATION_PERMISSIONS
+        | SERVICE_PERMISSIONS
+        | OBSERVATION_PERMISSIONS
     ),
     Role.TEAM_MEMBER: frozenset(
         {
@@ -252,6 +280,8 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
             Permission.NOTE_READ,
             Permission.COMPETITOR_READ,
             Permission.LOCATION_READ,
+            Permission.SERVICE_READ,
+            Permission.OBSERVATION_READ,
         }
     ),
     Role.PROJECT_EDITOR: frozenset(
@@ -263,6 +293,8 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
         | NOTE_PERMISSIONS
         | COMPETITOR_PERMISSIONS
         | LOCATION_PERMISSIONS
+        | SERVICE_PERMISSIONS
+        | OBSERVATION_PERMISSIONS
     ),
     Role.PROJECT_VIEWER: frozenset(
         {
@@ -275,6 +307,8 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
             Permission.NOTE_READ,
             Permission.COMPETITOR_READ,
             Permission.LOCATION_READ,
+            Permission.SERVICE_READ,
+            Permission.OBSERVATION_READ,
         }
     ),
 }
