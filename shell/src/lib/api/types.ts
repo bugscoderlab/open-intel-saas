@@ -79,3 +79,99 @@ export interface ProjectTag {
   name: string;
   color: string | null;
 }
+
+// -- research module (Phase 2) ------------------------------------------------
+
+export interface Notebook {
+  id: string;
+  organization_id: string;
+  project_id: string;
+  name: string;
+  description: string | null;
+  archived: boolean;
+}
+
+export interface Source {
+  id: string;
+  organization_id: string;
+  project_id: string;
+  notebook_id: string | null;
+  title: string;
+  type: string;
+  status: string;
+  error: string | null;
+}
+
+export interface SearchHit {
+  source_id: string;
+  title: string;
+  snippet: string;
+  score: number;
+}
+
+export interface Note {
+  id: string;
+  organization_id: string;
+  project_id: string;
+  notebook_id: string;
+  title: string;
+  content: string;
+}
+
+// -- competitor intelligence module (Phase 3) ---------------------------------
+
+export interface Competitor {
+  id: string;
+  organization_id: string;
+  project_id: string;
+  name: string;
+  website: string | null;
+  notes: string | null;
+}
+
+export interface Location {
+  id: string;
+  organization_id: string;
+  project_id: string;
+  competitor_id: string;
+  name: string;
+  address: string | null;
+}
+
+export interface Service {
+  id: string;
+  organization_id: string;
+  project_id: string;
+  name: string;
+}
+
+export interface Observation {
+  id: string;
+  organization_id: string;
+  project_id: string;
+  competitor_id: string;
+  service_id: string | null;
+  location_id: string | null;
+  kind: string;
+  price_amount: string | null;
+  price_currency: string | null;
+  observed_on: string;
+  confidence: string;
+  extraction_version: string;
+  approval_state: "pending" | "approved" | "rejected" | "superseded" | string;
+  superseded_by: string | null;
+}
+
+export interface EvidenceLink {
+  id: string;
+  organization_id: string;
+  project_id: string;
+  competitor_id: string;
+  observation_id: string | null;
+  target_kind: string;
+  target_id: string;
+  excerpt: string | null;
+  excerpt_start: number | null;
+  excerpt_end: number | null;
+  approval_state: string;
+}

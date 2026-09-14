@@ -2,6 +2,7 @@
 
 import { ChevronDown, LogOut } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 
@@ -17,13 +18,19 @@ import type { Organization } from "@/lib/api/types";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
-/** Modules not built yet (Phase 2+): rendered unavailable, never erroring
+/** Modules whose APIs are live but whose UI is still a placeholder page:
+ *  clickable, and the page says what the API already supports.
+ *  (ticket #19 pattern extended as phases shipped — Phases 2 and 3.) */
+const AVAILABLE_MODULES = [
+  { name: "Research", href: (orgId: string) => `/org/${orgId}/research` },
+  { name: "Competitor Intelligence", href: (orgId: string) => `/org/${orgId}/competitors` },
+] as const;
+
+/** Modules not built yet: rendered unavailable, never erroring
  *  (ticket #19 acceptance: "Navigation reflects disabled modules"). */
 const DISABLED_MODULES = [
-  { name: "Research", note: "Phase 2" },
-  { name: "Competitor Intelligence", note: "Phase 2" },
-  { name: "Monitoring", note: "Phase 3" },
-  { name: "Analytics", note: "Phase 3" },
+  { name: "Analytics", note: "Phase 6" },
+  { name: "Monitoring", note: "Phase 8" },
 ] as const;
 
 interface AppShellProps {
@@ -35,6 +42,7 @@ interface AppShellProps {
 
 export function AppShell({ email, orgs, currentOrgId, children }: AppShellProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const currentOrg = orgs.find((org) => org.id === currentOrgId) ?? null;
 
   async function signOut() {
@@ -81,9 +89,21 @@ export function AppShell({ email, orgs, currentOrgId, children }: AppShellProps)
           </div>
         </div>
         <nav className="mx-auto flex max-w-5xl gap-1 px-4 pb-2">
-          <NavLink href={currentOrgId ? `/org/${currentOrgId}` : "/org"} active>
+          <NavLink
+            href={currentOrgId ? `/org/${currentOrgId}` : "/org"}
+            active={pathname === `/org/${currentOrgId}`}
+          >
             Platform
           </NavLink>
+          {AVAILABLE_MODULES.map((module) => (
+            <NavLink
+              key={module.name}
+              href={currentOrgId ? module.href(currentOrgId) : "/org"}
+              active={pathname === module.href(currentOrgId ?? "")}
+            >
+              {module.name}
+            </NavLink>
+          ))}
           {DISABLED_MODULES.map((module) => (
             <span
               key={module.name}
