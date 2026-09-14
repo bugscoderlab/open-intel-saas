@@ -6,6 +6,7 @@ environment (plan §14.2).
 """
 
 import os
+import socket
 from dataclasses import dataclass
 from typing import Mapping
 
@@ -21,7 +22,9 @@ class Settings:
             start when an optional module is in this set (plan §20).
         database_dsn: Managed-Postgres DSN for SQLAlchemy/asyncpg. Built
             from the Supabase project host/password unless DATABASE_URL
-            overrides it (plan §5.3).
+            overrides it (plan §5.3); falls back to the Supavisor
+            pooler (session mode) when the direct host does not resolve
+            and SUPABASE_POOLER_HOST is configured.
         supabase_url: Project API URL — used for Auth (JWT verification
             JWKS, admin user provisioning in seeds/tests).
         supabase_service_role_key: Backend-only key. Never leaves
@@ -90,7 +93,18 @@ class Settings:
 
 
 def _database_dsn(environ: Mapping[str, str]) -> str:
-    """DSN for the managed project; DATABASE_URL wins when present."""
+    """DSN for the managed project.
+
+    Precedence: DATABASE_URL wins outright. Otherwise the direct
+    ``db.<ref>.supabase.co`` host is used — unless SUPABASE_POOLER_HOST
+    is configured and the direct host does not currently resolve.
+    Supabase pulls the direct host's DNS record during failovers and
+    maintenance; the pooler (Supavisor) keeps answering, so we fall
+    back to it in session mode (default port 5432, user
+    ``postgres.<ref>``), which asyncpg's prepared statements are safe
+    against. The probe is one DNS lookup at settings load, so a
+    recovered direct host is preferred again on the next process start.
+    """
     if environ.get("DATABASE_URL"):
         return environ["DATABASE_URL"]
     host = environ.get("SUPABASE_DB_HOST", "")
@@ -99,6 +113,34 @@ def _database_dsn(environ: Mapping[str, str]) -> str:
         return ""
     from urllib.parse import quote
 
+    pooler_host = environ.get("SUPABASE_POOLER_HOST", "")
+    if pooler_host and not _host_resolves(host):
+        ref = environ.get("SUPABASE_PROJECT_REF", "") or _ref_from_db_host(host)
+        user = f"postgres.{ref}" if ref else "postgres"
+        port = environ.get("SUPABASE_POOLER_PORT", "5432")
+        return (
+            f"postgresql+asyncpg://{user}:{quote(password, safe='')}@"
+            f"{pooler_host}:{port}/postgres"
+        )
     return (
         f"postgresql+asyncpg://postgres:{quote(password, safe='')}@{host}:5432/postgres"
     )
+
+
+def _ref_from_db_host(host: str) -> str:
+    """Best-effort project ref from ``db.<ref>.supabase.co``."""
+    parts = host.split(".")
+    if len(parts) >= 3 and parts[0] == "db":
+        return parts[1]
+    return ""
+
+
+def _host_resolves(host: str) -> bool:
+    """One DNS probe. False on any resolution failure (NXDOMAIN, empty
+    answer, resolver unreachable) — exactly the failure modes that make
+    the direct connect host unusable."""
+    try:
+        socket.getaddrinfo(host, 5432)
+    except OSError:
+        return False
+    return True
