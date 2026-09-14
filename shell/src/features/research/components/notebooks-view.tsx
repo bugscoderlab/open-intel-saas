@@ -10,7 +10,7 @@ import {
   updateNote,
   updateNotebook,
 } from "@/lib/api/client";
-import type { Note, Notebook } from "@/lib/api/types";
+import type { Note, Notebook, Source } from "@/lib/api/types";
 import { cn } from "@/lib/utils";
 
 import {
@@ -25,6 +25,8 @@ interface NotebooksViewProps {
   projectId: string;
   notebooks: Notebook[];
   notesByNotebook: Record<string, Note[]>;
+  /** Project sources; filtered to the active notebook for its detail. */
+  sources: Source[];
   activeNotebookId: string | null;
   readOnly: boolean;
   onSelectNotebook: (id: string | null) => void;
@@ -36,6 +38,7 @@ export function NotebooksView({
   projectId,
   notebooks,
   notesByNotebook,
+  sources,
   activeNotebookId,
   readOnly,
   onSelectNotebook,
@@ -133,26 +136,62 @@ export function NotebooksView({
         </ul>
       </section>
 
-      <section className={`${card} lg:col-span-2`}>
-        <h3 className="mb-3 text-sm font-semibold">
-          {active ? `Notes — ${active.name}` : "Notes"}
-        </h3>
-        {!active ? (
+      {/* The chat column of the notebook detail arrives in Phase 7
+          (intelligence chatbot) — it slots in beside these two columns
+          (spec #36). */}
+      {!active ? (
+        <section className={`${card} lg:col-span-2`}>
+          <h3 className="mb-3 text-sm font-semibold">Notebook detail</h3>
           <p className="text-sm text-[#737687]">
-            Select a notebook to see and edit its notes.
+            Select a notebook to see its sources and notes side by side.
           </p>
-        ) : (
-          <NotesEditor
-            token={token}
-            projectId={projectId}
-            notebookId={active.id}
-            notes={notes}
-            readOnly={readOnly}
-            onChanged={onChanged}
-          />
-        )}
-      </section>
+        </section>
+      ) : (
+        <div className="grid gap-4 lg:col-span-2 lg:grid-cols-2">
+          <section className={card}>
+            <h3 className="mb-3 text-sm font-semibold">Sources — {active.name}</h3>
+            <NotebookSources
+              sources={sources.filter((s) => s.notebook_id === active.id)}
+            />
+          </section>
+          <section className={card}>
+            <h3 className="mb-3 text-sm font-semibold">Notes — {active.name}</h3>
+            <NotesEditor
+              token={token}
+              projectId={projectId}
+              notebookId={active.id}
+              notes={notes}
+              readOnly={readOnly}
+              onChanged={onChanged}
+            />
+          </section>
+        </div>
+      )}
     </div>
+  );
+}
+
+/** Sources of the open notebook (read-only here; ingestion and retry live
+ *  in the workspace Sources view). */
+function NotebookSources({ sources }: { sources: Source[] }) {
+  if (sources.length === 0) {
+    return <p className="text-sm text-[#737687]">No sources in this notebook.</p>;
+  }
+  return (
+    <ul className="space-y-2">
+      {sources.map((source) => (
+        <li key={source.id} className="text-sm">
+          <span className="mr-1.5 inline-block rounded bg-[#f0edff] px-1.5 py-0.5 text-xs font-semibold uppercase tracking-wide text-[#5a48c8]">
+            {source.type}
+          </span>
+          <span className="font-medium">{source.title}</span>
+          <span className="ml-1.5 text-xs text-[#737687]">{source.status}</span>
+          {source.error ? (
+            <p className="mt-0.5 text-xs text-red-600">{source.error}</p>
+          ) : null}
+        </li>
+      ))}
+    </ul>
   );
 }
 

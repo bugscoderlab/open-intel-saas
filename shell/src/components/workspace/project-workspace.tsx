@@ -93,6 +93,8 @@ export function ProjectWorkspace() {
   const view: View = isView(searchParams.get("view"))
     ? (searchParams.get("view") as View)
     : "overview";
+  /** Deep link into the notebook detail (Notebooks view only). */
+  const activeNotebookId = searchParams.get("notebook");
 
   const [orgs, setOrgs] = useState<Organization[]>([]);
   const [project, setProject] = useState<Project | null>(null);
@@ -104,7 +106,6 @@ export function ProjectWorkspace() {
 
   const [notebooks, setNotebooks] = useState<Notebook[]>([]);
   const [notesByNotebook, setNotesByNotebook] = useState<Record<string, Note[]>>({});
-  const [activeNotebookId, setActiveNotebookId] = useState<string | null>(null);
 
   const [competitors, setCompetitors] = useState<Competitor[]>([]);
   const [services, setServices] = useState<Service[]>([]);
@@ -211,6 +212,17 @@ export function ProjectWorkspace() {
     [orgId, projectId, router],
   );
 
+  const onSelectNotebook = useCallback(
+    (notebookId: string | null) => {
+      const qs = new URLSearchParams({ view: "notebooks" });
+      if (notebookId) qs.set("notebook", notebookId);
+      router.replace(`/org/${orgId}/projects/${projectId}?${qs.toString()}`, {
+        scroll: false,
+      });
+    },
+    [orgId, projectId, router],
+  );
+
   if (!accessToken || !session) return null;
 
   // Matrix mirror, same derivation as the former project detail page: org
@@ -294,9 +306,10 @@ export function ProjectWorkspace() {
           projectId={projectId}
           notebooks={notebooks}
           notesByNotebook={notesByNotebook}
+          sources={sources}
           activeNotebookId={activeNotebookId}
           readOnly={readOnly}
-          onSelectNotebook={setActiveNotebookId}
+          onSelectNotebook={onSelectNotebook}
           onChanged={load}
         />
       ) : null}
