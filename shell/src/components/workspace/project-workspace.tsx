@@ -10,7 +10,7 @@ import { OverviewView } from "@/features/competitors/components/overview-view";
 import { ReviewView } from "@/features/competitors/components/review-view";
 import { NotebooksView } from "@/features/research/components/notebooks-view";
 import { SearchView } from "@/features/research/components/search-view";
-import { SourcesView } from "@/features/research/components/sources-view";
+import { SourcesView } from "@/components/workspace/sources-view";
 import { WorkspaceShell, type WorkspaceNavItem } from "@/components/layout/workspace-shell";
 import { Badge } from "@/components/ui/badge";
 import { card } from "@/components/workspace/bits";
@@ -306,6 +306,8 @@ export function ProjectWorkspace() {
           projectId={projectId}
           notebooks={notebooks}
           sources={sources}
+          competitors={competitors}
+          evidenceByCompetitor={evidenceByCompetitor}
           readOnly={readOnly}
           onChanged={load}
         />
