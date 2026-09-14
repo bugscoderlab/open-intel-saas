@@ -5,12 +5,14 @@ competitor repositories on the same session (mirrors SqlResearchUnit).
 from modules.competitor_intelligence.domain.unit_of_work import (
     Competitors,
     CompetitorUnit,
+    Evidence,
     Locations,
     Observations,
     Services,
 )
 from modules.competitor_intelligence.infrastructure.repositories import (
     SqlCompetitors,
+    SqlEvidence,
     SqlLocations,
     SqlObservations,
     SqlServices,
@@ -29,6 +31,7 @@ class SqlCompetitorUnit(SqlPlatformUnit):
         self.locations: Locations = SqlLocations(self._session)
         self.services: Services = SqlServices(self._session)
         self.observations: Observations = SqlObservations(self._session)
+        self.evidence: Evidence = SqlEvidence(self._session)
         return self
 
 

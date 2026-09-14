@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from modules.competitor_intelligence.domain.entities import (
     Competitor,
+    EvidenceLink,
     Location,
     Observation,
     Service,
@@ -432,3 +433,108 @@ class SqlObservations:
             .order_by(tables.observations.c.created_at)
         )
         return [_row_to_observation(row) for row in result.all()]
+
+
+def _row_to_evidence(row: Row) -> EvidenceLink:
+    return EvidenceLink(
+        id=row.id,
+        organization_id=row.organization_id,
+        project_id=row.project_id,
+        competitor_id=row.competitor_id,
+        observation_id=row.observation_id,
+        target_kind=row.target_kind,
+        target_id=row.target_id,
+        excerpt=row.excerpt,
+        excerpt_start=row.excerpt_start,
+        excerpt_end=row.excerpt_end,
+        approval_state=row.approval_state,
+        created_by=row.created_by,
+    )
+
+
+class SqlEvidence:
+    """Evidence repository: links a competitor to an opaque research
+    target. Scope flows through the competitor row; no cross-module
+    reads (plan §14.4 rule 2)."""
+
+    def __init__(self, session: AsyncSession) -> None:
+        self._session = session
+
+    async def create(self, link: EvidenceLink) -> None:
+        await self._session.execute(
+            insert(tables.evidence_links).values(
+                id=link.id,
+                organization_id=link.organization_id,
+                project_id=link.project_id,
+                competitor_id=link.competitor_id,
+                observation_id=link.observation_id,
+                target_kind=link.target_kind,
+                target_id=link.target_id,
+                excerpt=link.excerpt,
+                excerpt_start=link.excerpt_start,
+                excerpt_end=link.excerpt_end,
+                approval_state=link.approval_state,
+                created_by=link.created_by,
+            )
+        )
+
+    async def get(
+        self,
+        organization_id: UUID,
+        project_id: UUID,
+        competitor_id: UUID,
+        evidence_id: UUID,
+    ) -> EvidenceLink | None:
+        result = await self._session.execute(
+            select(tables.evidence_links).where(
+                tables.evidence_links.c.organization_id == organization_id,
+                tables.evidence_links.c.project_id == project_id,
+                tables.evidence_links.c.competitor_id == competitor_id,
+                tables.evidence_links.c.id == evidence_id,
+            )
+        )
+        row = result.first()
+        return _row_to_evidence(row) if row else None
+
+    async def delete(
+        self,
+        organization_id: UUID,
+        project_id: UUID,
+        competitor_id: UUID,
+        evidence_id: UUID,
+    ) -> None:
+        await self._session.execute(
+            delete(tables.evidence_links).where(
+                tables.evidence_links.c.organization_id == organization_id,
+                tables.evidence_links.c.project_id == project_id,
+                tables.evidence_links.c.competitor_id == competitor_id,
+                tables.evidence_links.c.id == evidence_id,
+            )
+        )
+
+    async def list_for_competitor(
+        self,
+        organization_id: UUID,
+        project_id: UUID,
+        competitor_id: UUID,
+        *,
+        target_kind: str | None = None,
+        observation_id: UUID | None = None,
+    ) -> list[EvidenceLink]:
+        conditions = [
+            tables.evidence_links.c.organization_id == organization_id,
+            tables.evidence_links.c.project_id == project_id,
+            tables.evidence_links.c.competitor_id == competitor_id,
+        ]
+        if target_kind is not None:
+            conditions.append(tables.evidence_links.c.target_kind == target_kind)
+        if observation_id is not None:
+            conditions.append(
+                tables.evidence_links.c.observation_id == observation_id
+            )
+        result = await self._session.execute(
+            select(tables.evidence_links)
+            .where(*conditions)
+            .order_by(tables.evidence_links.c.created_at)
+        )
+        return [_row_to_evidence(row) for row in result.all()]

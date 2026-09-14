@@ -19,6 +19,8 @@ from modules.competitor_intelligence.api.schemas import (
     CompetitorCreateRequest,
     CompetitorResponse,
     CompetitorUpdateRequest,
+    EvidenceCreateRequest,
+    EvidenceLinkResponse,
     LocationCreateRequest,
     LocationResponse,
     LocationUpdateRequest,
@@ -29,12 +31,14 @@ from modules.competitor_intelligence.api.schemas import (
 )
 from modules.competitor_intelligence.application.services import (
     competitor_service,
+    evidence_service,
     location_service,
     observation_service,
     service_catalog_service,
 )
 from modules.competitor_intelligence.domain.entities import (
     Competitor,
+    EvidenceLink,
     Location,
     Observation,
     Service,
@@ -286,6 +290,7 @@ def build_competitor_router() -> APIRouter:
     router.include_router(build_locations_router())
     router.include_router(build_services_router())
     router.include_router(build_observations_router())
+    router.include_router(build_evidence_router())
     return router
 
 
@@ -510,4 +515,106 @@ def _observation_response(observation: Observation) -> ObservationResponse:
         extraction_version=observation.extraction_version,
         approval_state=observation.approval_state,
         superseded_by=observation.superseded_by,
+    )
+
+
+def build_evidence_router() -> APIRouter:
+    """Evidence links (ticket #35): competitor↔source/notebook
+    connections. Target IDs are opaque UUIDs — no research import, no
+    cross-module existence check in Phase 3 (spec #31 assumption 4;
+    deferred behind the module-enabled check in Phase 5)."""
+    router = APIRouter(tags=["evidence"])
+
+    @router.post(
+        "/projects/{project_id}/competitors/{competitor_id}/evidence",
+        response_model=EvidenceLinkResponse,
+        status_code=201,
+    )
+    @endpoint
+    async def add_evidence(
+        project_id: UUID,
+        competitor_id: UUID,
+        body: EvidenceCreateRequest,
+        unit: CompetitorUnitDep,
+        principal: PrincipalDep,
+        authz: AuthzDep,
+    ) -> EvidenceLinkResponse:
+        link = await evidence_service.add_evidence(
+            unit,
+            authz,
+            principal,
+            project_id=project_id,
+            competitor_id=competitor_id,
+            target_kind=body.target_kind,
+            target_id=body.target_id,
+            observation_id=body.observation_id,
+            excerpt=body.excerpt,
+            excerpt_start=body.excerpt_start,
+            excerpt_end=body.excerpt_end,
+        )
+        return _evidence_response(link)
+
+    @router.get(
+        "/projects/{project_id}/competitors/{competitor_id}/evidence",
+        response_model=list[EvidenceLinkResponse],
+    )
+    @endpoint
+    async def list_evidence(
+        project_id: UUID,
+        competitor_id: UUID,
+        unit: CompetitorUnitDep,
+        principal: PrincipalDep,
+        authz: AuthzDep,
+        target_kind: str | None = None,
+        observation_id: UUID | None = None,
+    ) -> list[EvidenceLinkResponse]:
+        links = await evidence_service.list_evidence(
+            unit,
+            authz,
+            principal,
+            project_id=project_id,
+            competitor_id=competitor_id,
+            target_kind=target_kind,
+            observation_id=observation_id,
+        )
+        return [_evidence_response(link) for link in links]
+
+    @router.delete(
+        "/projects/{project_id}/competitors/{competitor_id}/evidence/{evidence_id}",
+        status_code=204,
+    )
+    @endpoint
+    async def delete_evidence(
+        project_id: UUID,
+        competitor_id: UUID,
+        evidence_id: UUID,
+        unit: CompetitorUnitDep,
+        principal: PrincipalDep,
+        authz: AuthzDep,
+    ) -> None:
+        await evidence_service.delete_evidence(
+            unit,
+            authz,
+            principal,
+            project_id=project_id,
+            competitor_id=competitor_id,
+            evidence_id=evidence_id,
+        )
+
+    return router
+
+
+def _evidence_response(link: EvidenceLink) -> EvidenceLinkResponse:
+    return EvidenceLinkResponse(
+        id=link.id,
+        organization_id=link.organization_id,
+        project_id=link.project_id,
+        competitor_id=link.competitor_id,
+        observation_id=link.observation_id,
+        target_kind=link.target_kind,
+        target_id=link.target_id,
+        excerpt=link.excerpt,
+        excerpt_start=link.excerpt_start,
+        excerpt_end=link.excerpt_end,
+        approval_state=link.approval_state,
     )

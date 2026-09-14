@@ -90,3 +90,32 @@ class Observation:
     approval_state: str
     superseded_by: UUID | None
     created_by: UUID
+
+
+# Evidence targets (ticket #35): the kinds of research rows a link may
+# point at. Target IDs stay opaque UUIDs — no cross-module FK or import
+# (plan §14.4 rule 2; existence validation deferred to Phase 5).
+EVIDENCE_TARGET_SOURCE = "source"
+EVIDENCE_TARGET_NOTEBOOK = "notebook"
+EVIDENCE_TARGET_KINDS = (EVIDENCE_TARGET_SOURCE, EVIDENCE_TARGET_NOTEBOOK)
+
+
+@dataclass(frozen=True)
+class EvidenceLink:
+    """Connects a Competitor (and optionally one of its Observations) to
+    a research Source or Notebook, with an excerpt pointing at the exact
+    span. Manual attaches are approved immediately; the state column is
+    retained for Phase 5 automation (glossary: Evidence)."""
+
+    id: UUID
+    organization_id: UUID
+    project_id: UUID
+    competitor_id: UUID
+    observation_id: UUID | None
+    target_kind: str
+    target_id: UUID
+    excerpt: str | None
+    excerpt_start: int | None
+    excerpt_end: int | None
+    approval_state: str
+    created_by: UUID

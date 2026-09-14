@@ -11,6 +11,7 @@ from uuid import UUID
 
 from modules.competitor_intelligence.domain.entities import (
     Competitor,
+    EvidenceLink,
     Location,
     Observation,
     Service,
@@ -109,6 +110,38 @@ class Observations(Protocol):
     ) -> int: ...
 
 
+class Evidence(Protocol):
+    """Evidence repository — links a competitor (and optionally one of
+    its observations) to an opaque research target. Tenant scope is
+    explicit on every query; the observation reference nulls out when
+    the observation row is deleted (migration 0017)."""
+
+    async def create(self, link: EvidenceLink) -> None: ...
+    async def get(
+        self,
+        organization_id: UUID,
+        project_id: UUID,
+        competitor_id: UUID,
+        evidence_id: UUID,
+    ) -> EvidenceLink | None: ...
+    async def delete(
+        self,
+        organization_id: UUID,
+        project_id: UUID,
+        competitor_id: UUID,
+        evidence_id: UUID,
+    ) -> None: ...
+    async def list_for_competitor(
+        self,
+        organization_id: UUID,
+        project_id: UUID,
+        competitor_id: UUID,
+        *,
+        target_kind: str | None = None,
+        observation_id: UUID | None = None,
+    ) -> list[EvidenceLink]: ...
+
+
 class CompetitorUnit(PlatformUnit, Protocol):
     """One transaction worth of platform + competitor repositories."""
 
@@ -116,3 +149,4 @@ class CompetitorUnit(PlatformUnit, Protocol):
     locations: Locations
     services: Services
     observations: Observations
+    evidence: Evidence

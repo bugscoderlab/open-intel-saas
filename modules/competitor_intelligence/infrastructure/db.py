@@ -14,6 +14,7 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Index,
+    Integer,
     Numeric,
     Table,
     Text,
@@ -117,5 +118,42 @@ observations = Table(
     Index("observations_organization_id_idx", "organization_id"),
     Index("observations_competitor_id_idx", "competitor_id"),
     Index("observations_review_idx", "project_id", "approval_state"),
+    schema="competitor",
+)
+
+# Mirrors migrations/0017_competitor_evidence_links.sql. Target IDs are
+# opaque UUIDs — deliberately no FK into research (plan §14.4 rule 2).
+evidence_links = Table(
+    "evidence_links",
+    metadata,
+    Column("id", SAUUID, primary_key=True),
+    Column("organization_id", SAUUID, ForeignKey("organizations.id"), nullable=False),
+    Column("project_id", SAUUID, ForeignKey("projects.id"), nullable=False),
+    Column(
+        "competitor_id",
+        SAUUID,
+        ForeignKey("competitor.competitors.id"),
+        nullable=False,
+    ),
+    Column(
+        "observation_id",
+        SAUUID,
+        ForeignKey("competitor.observations.id"),
+        nullable=True,
+    ),
+    Column("target_kind", Text, nullable=False),
+    Column("target_id", SAUUID, nullable=False),
+    Column("excerpt", Text),
+    Column("excerpt_start", Integer),
+    Column("excerpt_end", Integer),
+    Column("approval_state", Text, nullable=False),
+    Column("created_by", SAUUID, ForeignKey("app_users.id"), nullable=False),
+    Column("created_at", DateTime(timezone=True), server_default=func.now()),
+    Column("updated_at", DateTime(timezone=True), server_default=func.now()),
+    Index("evidence_links_project_id_idx", "project_id"),
+    Index("evidence_links_organization_id_idx", "organization_id"),
+    Index("evidence_links_competitor_id_idx", "competitor_id"),
+    Index("evidence_links_observation_id_idx", "observation_id"),
+    Index("evidence_links_target_idx", "target_kind", "target_id"),
     schema="competitor",
 )
