@@ -2,6 +2,15 @@
 
 This document provides guidelines for writing tests in Open Notebook. Testing is critical to maintaining code quality and preventing regressions.
 
+> **Running the product suite (`tests/product/`)**: it drives the research
+> dispatcher (`drain_pending_sources`) itself and asserts on exact outbox
+> and source states. No platform API may be listening on `127.0.0.1:5055`
+> while it runs — a live `serve.py` wires `run_dispatcher`, which polls the
+> same outbox queue every 2 s and races the suite (sources fail with
+> "embedding provider/model not configured", drains claim 0 events). The
+> conftest guard `no_competing_dispatcher` refuses to run in that case;
+> stop the dev API first (`make stop-all`).
+
 ## Testing Philosophy
 
 ### What to Test

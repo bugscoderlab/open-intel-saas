@@ -117,6 +117,33 @@ def settings() -> Settings:
     return result
 
 
+@pytest.fixture(scope="session", autouse=True)
+def no_competing_dispatcher(settings: Settings) -> None:
+    """Fail fast when a live API/dispatcher shares the test database.
+
+    The product suite drives ``drain_pending_sources`` itself and asserts
+    on exact outbox/source states. A locally running ``serve.py`` (the
+    composition root wires ``run_dispatcher``, which polls the same
+    outbox queue every 2 s with the settings-driven embedder) races the
+    suite: sources fail with "embedding provider/model not configured"
+    or drains claim 0 events — the classic flaky embeddings failures.
+    Loud refusal beats a cryptic flake; stop the dev API (``make stop-all``)
+    or run the suite where no platform API is listening.
+    """
+    import socket
+
+    try:
+        with socket.create_connection(("127.0.0.1", 5055), timeout=0.5):
+            pytest.fail(
+                "a platform API is listening on 127.0.0.1:5055 — its research "
+                "dispatcher races this suite over the shared outbox queue. "
+                "Stop it (make stop-all) and re-run.",
+                pytrace=False,
+            )
+    except OSError:
+        pass  # nothing listening: sole consumer, as the suite assumes
+
+
 @pytest_asyncio.fixture
 async def http() -> AsyncIterator[httpx.AsyncClient]:
     async with httpx.AsyncClient(timeout=30) as client:
