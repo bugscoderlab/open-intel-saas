@@ -96,6 +96,12 @@ class Observations(Protocol):
         approval_state: str,
         superseded_by: UUID | None,
     ) -> None: ...
+    async def list_current_approved_for_competitor(
+        self,
+        organization_id: UUID,
+        project_id: UUID,
+        competitor_id: UUID,
+    ) -> list[Observation]: ...
     async def list_pending_for_project(
         self, organization_id: UUID, project_id: UUID
     ) -> list[Observation]: ...

@@ -372,6 +372,25 @@ class SqlObservations:
             )
         )
 
+    async def list_current_approved_for_competitor(
+        self,
+        organization_id: UUID,
+        project_id: UUID,
+        competitor_id: UUID,
+    ) -> list[Observation]:
+        result = await self._session.execute(
+            select(tables.observations)
+            .where(
+                tables.observations.c.organization_id == organization_id,
+                tables.observations.c.project_id == project_id,
+                tables.observations.c.competitor_id == competitor_id,
+                tables.observations.c.approval_state == "approved",
+                tables.observations.c.superseded_by.is_(None),
+            )
+            .order_by(tables.observations.c.created_at.desc())
+        )
+        return [_row_to_observation(row) for row in result.all()]
+
     async def list_pending_for_project(
         self, organization_id: UUID, project_id: UUID
     ) -> list[Observation]:

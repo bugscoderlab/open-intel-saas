@@ -430,6 +430,27 @@ def build_observations_router() -> APIRouter:
         return [_observation_response(o) for o in observations]
 
     @router.get(
+        "/projects/{project_id}/competitors/{competitor_id}/observations/approved",
+        response_model=list[ObservationResponse],
+    )
+    @endpoint
+    async def list_approved_observations(
+        project_id: UUID,
+        competitor_id: UUID,
+        unit: CompetitorUnitDep,
+        principal: PrincipalDep,
+        authz: AuthzDep,
+    ) -> list[ObservationResponse]:
+        observations = await observation_service.list_approved_observations(
+            unit,
+            authz,
+            principal,
+            project_id=project_id,
+            competitor_id=competitor_id,
+        )
+        return [_observation_response(o) for o in observations]
+
+    @router.get(
         "/projects/{project_id}/review-queue",
         response_model=list[ObservationResponse],
     )

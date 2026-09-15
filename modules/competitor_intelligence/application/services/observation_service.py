@@ -367,6 +367,30 @@ async def reject_observation(
     )
 
 
+async def list_approved_observations(
+    unit: CompetitorUnit,
+    authz: AuthorizationService,
+    principal: Principal,
+    *,
+    project_id: UUID,
+    competitor_id: UUID,
+) -> list[Observation]:
+    """observation.read — the APPROVED, non-superseded facts (the feed
+    analytics/chat consume; ticket #51). Pending and rejected rows are
+    review work, superseded rows are history: neither is durable truth."""
+    project, competitor = await _load_competitor_scope(unit, project_id, competitor_id)
+    await authz.require(
+        principal,
+        Permission.OBSERVATION_READ,
+        organization_id=project.organization_id,
+        team_id=project.owning_team_id,
+        project_id=project_id,
+    )
+    return await unit.observations.list_current_approved_for_competitor(
+        project.organization_id, project_id, competitor_id
+    )
+
+
 async def record_proposed_observations(
     unit: CompetitorUnit,
     *,
