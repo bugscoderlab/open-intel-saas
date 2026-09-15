@@ -12,7 +12,7 @@ FileStorage port (spec #26): objects live in memory, every call is
 recorded, and signed URLs are deterministic — no real bucket is touched.
 """
 
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 
 from modules.research.application.errors import EmbeddingProviderError
 from modules.research.domain.embedder import EMBEDDING_DIMENSIONS
@@ -107,3 +107,27 @@ class RecordingFileStorage:
     async def signed_url(self, key: str, ttl: timedelta) -> str:
         self.sign_calls.append((self.bucket, key))
         return f"signed://{self.bucket}/{key}"
+
+
+class FakeWebsiteFetcher:
+    """Fake WebsiteFetcher port (collection, ticket #42): scripted pages
+    keyed by URL, an optional exception to raise on every fetch, and a
+    recording of every fetched URL. No network."""
+
+    def __init__(self, pages: dict[str, str] | None = None) -> None:
+        self.pages = pages or {}
+        self.fail_with: Exception | None = None
+        self.fetched: list[str] = []
+
+    async def fetch(self, url: str):
+        from modules.collection.domain.ports import FetchedPage
+
+        self.fetched.append(url)
+        if self.fail_with is not None:
+            raise self.fail_with
+        return FetchedPage(
+            url=url,
+            status_code=200,
+            content=self.pages.get(url, "<html><body>default page</body></html>"),
+            fetched_at=datetime.now(UTC),
+        )

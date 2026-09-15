@@ -58,6 +58,7 @@ class Settings:
     embedding_api_key: str = ""
     storage_bucket: str = "open-intel-files"
     seed_password: str = "seed-password-change-me"
+    collection_daily_fetch_quota: int = 100
 
     @classmethod
     def from_env(cls, environ: Mapping[str, str] | None = None) -> "Settings":
@@ -81,6 +82,9 @@ class Settings:
             storage_bucket=environ.get("OPEN_INTEL_STORAGE_BUCKET", "open-intel-files"),
             seed_password=environ.get(
                 "OPEN_INTEL_SEED_PASSWORD", "seed-password-change-me"
+            ),
+            collection_daily_fetch_quota=int(
+                environ.get("OPEN_INTEL_COLLECTION_DAILY_FETCH_QUOTA", "100")
             ),
         )
 

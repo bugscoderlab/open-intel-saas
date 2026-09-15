@@ -199,6 +199,12 @@ async def app_client(
     email provider so tests can assert invitation delivery."""
     from fastapi.testclient import TestClient
 
+    from modules.collection.api.routers import (
+        build_collection_router,
+    )
+    from modules.collection.infrastructure.unit_of_work import (
+        SqlCollectionUnit,
+    )
     from modules.competitor_intelligence.api.routers import (
         build_competitor_router,
     )
@@ -226,6 +232,8 @@ async def app_client(
         research_unit_factory=lambda: SqlResearchUnit(engine),
         competitor_router=build_competitor_router(),
         competitor_unit_factory=lambda: SqlCompetitorUnit(engine),
+        collection_router=build_collection_router(),
+        collection_unit_factory=lambda: SqlCollectionUnit(engine),
     )
     app.state.recording_email = recording_email
     from tests.product.fakes import DeterministicEmbedder, RecordingFileStorage
@@ -247,6 +255,12 @@ async def api(settings: Settings):
     """
     from httpx import ASGITransport, AsyncClient
 
+    from modules.collection.api.routers import (
+        build_collection_router,
+    )
+    from modules.collection.infrastructure.unit_of_work import (
+        SqlCollectionUnit,
+    )
     from modules.competitor_intelligence.api.routers import (
         build_competitor_router,
     )
@@ -275,6 +289,8 @@ async def api(settings: Settings):
         research_unit_factory=lambda: SqlResearchUnit(engine),
         competitor_router=build_competitor_router(),
         competitor_unit_factory=lambda: SqlCompetitorUnit(engine),
+        collection_router=build_collection_router(),
+        collection_unit_factory=lambda: SqlCollectionUnit(engine),
     )
     app.state.recording_email = recording_email
     from tests.product.fakes import DeterministicEmbedder, RecordingFileStorage

@@ -81,6 +81,8 @@ class Permission:
     EVIDENCE_CREATE = "evidence.create"
     EVIDENCE_READ = "evidence.read"
     EVIDENCE_DELETE = "evidence.delete"
+    SNAPSHOT_READ = "snapshot.read"
+    COLLECTION_RUN = "collection.run"
 
 
 ALL_PERMISSIONS = frozenset(
@@ -192,6 +194,18 @@ EVIDENCE_PERMISSIONS = frozenset(
     }
 )
 
+SNAPSHOT_PERMISSIONS = frozenset(
+    {
+        Permission.SNAPSHOT_READ,
+    }
+)
+
+COLLECTION_PERMISSIONS = frozenset(
+    {
+        Permission.COLLECTION_RUN,
+    }
+)
+
 ORG_BASE_PERMISSIONS = frozenset(
     {
         Permission.ORG_READ,
@@ -243,6 +257,8 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
         | SERVICE_PERMISSIONS
         | OBSERVATION_PERMISSIONS
         | EVIDENCE_PERMISSIONS
+        | SNAPSHOT_PERMISSIONS
+        | COLLECTION_PERMISSIONS
     ),
     Role.ORG_OWNER: frozenset(
         ORG_BASE_PERMISSIONS
@@ -258,6 +274,8 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
         | SERVICE_PERMISSIONS
         | OBSERVATION_PERMISSIONS
         | EVIDENCE_PERMISSIONS
+        | SNAPSHOT_PERMISSIONS
+        | COLLECTION_PERMISSIONS
         | {Permission.ORG_DELETE}
     ),
     Role.ORG_MEMBER: frozenset(
@@ -281,6 +299,8 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
         | SERVICE_PERMISSIONS
         | OBSERVATION_PERMISSIONS
         | EVIDENCE_PERMISSIONS
+        | SNAPSHOT_PERMISSIONS
+        | COLLECTION_PERMISSIONS
     ),
     Role.TEAM_MEMBER: frozenset(
         {
@@ -297,6 +317,7 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
             Permission.SERVICE_READ,
             Permission.OBSERVATION_READ,
             Permission.EVIDENCE_READ,
+            Permission.SNAPSHOT_READ,
         }
     ),
     Role.PROJECT_EDITOR: frozenset(
@@ -311,6 +332,8 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
         | SERVICE_PERMISSIONS
         | OBSERVATION_PERMISSIONS
         | EVIDENCE_PERMISSIONS
+        | SNAPSHOT_PERMISSIONS
+        | COLLECTION_PERMISSIONS
     ),
     Role.PROJECT_VIEWER: frozenset(
         {
@@ -326,6 +349,7 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
             Permission.SERVICE_READ,
             Permission.OBSERVATION_READ,
             Permission.EVIDENCE_READ,
+            Permission.SNAPSHOT_READ,
         }
     ),
 }

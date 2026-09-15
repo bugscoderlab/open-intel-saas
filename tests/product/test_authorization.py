@@ -112,6 +112,7 @@ def test_team_member_is_implied_viewer_on_team_projects() -> None:
             Permission.SERVICE_READ,
             Permission.OBSERVATION_READ,
             Permission.EVIDENCE_READ,
+            Permission.SNAPSHOT_READ,
         }
     )
 
@@ -137,6 +138,7 @@ def test_project_viewer_reads_but_never_mutates() -> None:
             Permission.SERVICE_READ,
             Permission.OBSERVATION_READ,
             Permission.EVIDENCE_READ,
+            Permission.SNAPSHOT_READ,
         }
     )
     assert Permission.TAG_CREATE not in ROLE_PERMISSIONS[Role.PROJECT_VIEWER]

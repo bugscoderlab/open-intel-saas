@@ -15,6 +15,18 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+from modules.collection.api.routers import (  # noqa: E402
+    build_collection_router,
+)
+from modules.collection.infrastructure.dispatcher import (  # noqa: E402
+    run_collection_dispatcher,
+)
+from modules.collection.infrastructure.http_fetcher import (  # noqa: E402
+    HttpxWebsiteFetcher,
+)
+from modules.collection.infrastructure.unit_of_work import (  # noqa: E402
+    SqlCollectionUnit,
+)
 from modules.competitor_intelligence.api.routers import (  # noqa: E402
     build_competitor_router,
 )
@@ -74,6 +86,10 @@ app = create_app(
     competitor_unit_factory=(
         (lambda: SqlCompetitorUnit(engine)) if engine is not None else None
     ),
+    collection_router=build_collection_router() if engine is not None else None,
+    collection_unit_factory=(
+        (lambda: SqlCollectionUnit(engine)) if engine is not None else None
+    ),
 )
 
 if engine is not None:
@@ -97,6 +113,12 @@ if engine is not None:
             bucket=settings.storage_bucket,
         )
     storage = getattr(app.state, "research_storage", None)
+    # On-demand website collection (spec #41): the fetcher port's
+    # reference adapter (plain httpx, SSRF-guarded) and the per-project
+    # daily fetch quota enforced at enqueue time.
+    app.state.collection_quota = settings.collection_daily_fetch_quota
+    collection_fetcher = HttpxWebsiteFetcher()
+    app.state.collection_fetcher = collection_fetcher
 
     @app.on_event("startup")
     async def _start_research_dispatcher() -> None:
@@ -105,4 +127,9 @@ if engine is not None:
         Tests drive the same drain function directly instead."""
         asyncio.create_task(
             run_dispatcher(dispatcher_engine, embedder=embedder, storage=storage)
+        )
+        # Off-request collection jobs (spec #41, same ADR-004 pattern):
+        # POST enqueues; this loop fetches and snapshots until shutdown.
+        asyncio.create_task(
+            run_collection_dispatcher(dispatcher_engine, collection_fetcher)
         )

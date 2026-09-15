@@ -12,7 +12,7 @@ cannot cross tenants even though the repository layer is bypassed.
 from __future__ import annotations
 
 import json
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import asyncpg
 import pytest
@@ -716,11 +716,43 @@ async def test_search_returns_no_cross_tenant_rows(seeded, tenant_ids, api, sett
     """Alpha and Beta hold sources with the SAME keyword. Alpha's member
     searching Alpha's project must see only Alpha's source — in both
     text and vector search — even though Beta's chunk vectors are the
-    closest possible match (same keyword space)."""
+    closest possible match (same keyword space).
+
+    The keyword is unique per run: the managed project keeps every
+    probe source from earlier runs, and a shared fixed keyword gets
+    crowded out of the top-N text hits once enough probes accumulate.
+    The same accumulation breaks the vector side differently: every
+    historical probe chunk is a 1-dim vector pointing the same way, so
+    any new 1-dim query ties at cosine 1.0 and the top-N cut is
+    arbitrary. Sweeping this test's own probe rows (search-probe-*) at
+    the start keeps both sides deterministic without touching data
+    owned by other tests."""
     from tests.product.fakes import KeywordEmbedder
 
-    embedder = KeywordEmbedder("grooming")
-    content = "grooming prices and full grooming services. " * 100
+    conn = await asyncpg.connect(settings.database_dsn_asyncpg, timeout=30)
+    try:
+        await conn.execute(
+            "delete from research.source_chunks c using research.sources s"
+            " where c.source_id = s.id and s.title like 'search-probe-%'"
+            " and s.project_id in (select id from public.projects"
+            " where name in ('Alpha Project', 'Beta Project'))"
+        )
+        await conn.execute(
+            "delete from research.sources where title like 'search-probe-%'"
+            " and project_id in (select id from public.projects"
+            " where name in ('Alpha Project', 'Beta Project'))"
+        )
+        await conn.execute(
+            "delete from research.notebooks where name like 'search-probe-%'"
+            " and project_id in (select id from public.projects"
+            " where name in ('Alpha Project', 'Beta Project'))"
+        )
+    finally:
+        await conn.close()
+
+    keyword = f"grooming{uuid4().hex[:10]}"
+    embedder = KeywordEmbedder(keyword)
+    content = f"{keyword} prices and full services. " * 100
     alpha_source = await _tenant_processed_source(
         seeded, tenant_ids, api, settings,
         user_key="a1", org_key="A", content=content, embedder=embedder,
@@ -734,18 +766,17 @@ async def test_search_returns_no_cross_tenant_rows(seeded, tenant_ids, api, sett
 
     text_hits = (await api.get(
         f"/projects/{tenant_ids['A']['project']}/search/text",
-        params={"q": "grooming"},
+        params={"q": keyword},
         headers=auth_headers(seeded["a1"]),
     )).json()
     assert len(text_hits) >= 1
-    # probe sources from earlier runs may still match; the property is
-    # that Alpha's hit is there and NO Beta source leaks in
+    # no probe litter remains after the sweep: Alpha's own source is the hit
     assert alpha_source in {h["source_id"] for h in text_hits}
     assert beta_source not in {h["source_id"] for h in text_hits}
 
     vector_hits = (await api.get(
         f"/projects/{tenant_ids['A']['project']}/search/vector",
-        params={"q": "grooming"},
+        params={"q": keyword},
         headers=auth_headers(seeded["a1"]),
     )).json()
     assert len(vector_hits) >= 1
@@ -755,7 +786,7 @@ async def test_search_returns_no_cross_tenant_rows(seeded, tenant_ids, api, sett
     # control: Beta's own member searching Beta's project sees Beta's copy
     beta_hits = (await api.get(
         f"/projects/{tenant_ids['B']['project']}/search/text",
-        params={"q": "grooming"},
+        params={"q": keyword},
         headers=auth_headers(seeded["b1"]),
     )).json()
     assert beta_source in {h["source_id"] for h in beta_hits}
