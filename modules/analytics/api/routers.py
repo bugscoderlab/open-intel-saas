@@ -1,4 +1,4 @@
-"""HTTP routers for the analytics module (ticket #54, spec #52).
+"""HTTP routers for the analytics module (tickets #54/#55, spec #52).
 
 Thin router: parse, authorize behind the matrix, run the named metric
 over the ApprovedFactsSource port, map typed errors to statuses.
@@ -7,7 +7,7 @@ Analytics is read-only — every endpoint is a GET.
 
 from uuid import UUID
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 
 from modules.analytics.api.deps import (
     AnalyticsUnitDep,
@@ -47,14 +47,64 @@ def build_analytics_router() -> APIRouter:
         authz: AuthzDep,
         source: FactsSourceDep,
     ) -> MetricResponse:
-        result = await analytics_service.run_metric_for_competitor(
+        result = await analytics_service.run_metric(
             unit,
             authz,
             principal,
             source,
             metric_name="price_trend",
             project_id=project_id,
-            competitor_id=competitor_id,
+            competitor_ids=(competitor_id,),
+        )
+        return _metric_response(result)
+
+    @router.get(
+        "/projects/{project_id}/analytics/comparison",
+        response_model=MetricResponse,
+    )
+    @endpoint
+    async def competitor_comparison(
+        project_id: UUID,
+        unit: AnalyticsUnitDep,
+        principal: PrincipalDep,
+        authz: AuthzDep,
+        source: FactsSourceDep,
+        competitor_ids: list[UUID] = Query(default=[]),
+    ) -> MetricResponse:
+        # Omitted filter = every competitor in the project; ids outside
+        # the project are silently excluded by the source port (#55).
+        result = await analytics_service.run_metric(
+            unit,
+            authz,
+            principal,
+            source,
+            metric_name="competitor_comparison",
+            project_id=project_id,
+            competitor_ids=tuple(competitor_ids) or None,
+        )
+        return _metric_response(result)
+
+    @router.get(
+        "/projects/{project_id}/analytics/service-coverage",
+        response_model=MetricResponse,
+    )
+    @endpoint
+    async def service_coverage(
+        project_id: UUID,
+        unit: AnalyticsUnitDep,
+        principal: PrincipalDep,
+        authz: AuthzDep,
+        source: FactsSourceDep,
+        competitor_ids: list[UUID] = Query(default=[]),
+    ) -> MetricResponse:
+        result = await analytics_service.run_metric(
+            unit,
+            authz,
+            principal,
+            source,
+            metric_name="service_coverage",
+            project_id=project_id,
+            competitor_ids=tuple(competitor_ids) or None,
         )
         return _metric_response(result)
 

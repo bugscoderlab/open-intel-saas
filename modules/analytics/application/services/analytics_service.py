@@ -6,7 +6,7 @@ observations list).
 
 from uuid import UUID
 
-from modules.analytics.application.metrics import get_metric
+from modules.analytics.application.metrics import MetricParams, get_metric
 from modules.analytics.domain.entities import MetricResult
 from modules.analytics.domain.errors import AnalyticsQueryError
 from modules.analytics.domain.ports import ApprovedFactsSource
@@ -19,7 +19,7 @@ from modules.platform.domain.identity import Principal
 from modules.platform.domain.permissions import Permission
 
 
-async def run_metric_for_competitor(
+async def run_metric(
     unit: AnalyticsUnit,
     authz: AuthorizationService,
     principal: Principal,
@@ -27,11 +27,12 @@ async def run_metric_for_competitor(
     *,
     metric_name: str,
     project_id: UUID,
-    competitor_id: UUID,
+    competitor_ids: tuple[UUID, ...] | None = None,
 ) -> MetricResult:
     """analytics.read — execute one registered metric. The project load
     enforces tenant scope; the source port re-carries project_id on
-    every query underneath."""
+    every query underneath, and silently excludes competitor ids that
+    are not in this project (recorded decision on #55)."""
     project = await unit.projects.get(project_id)
     if project is None:
         raise NotFoundError("project not found")
@@ -43,8 +44,9 @@ async def run_metric_for_competitor(
         project_id=project_id,
     )
     metric = get_metric(metric_name)
+    params = MetricParams(competitor_ids=competitor_ids)
     try:
-        result = await metric.compute(source, project_id, competitor_id)
+        result = await metric.compute(source, project_id, params)
     except AnalyticsQueryError:
         raise
     except Exception as exc:  # noqa: BLE001 — the metric boundary types

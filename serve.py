@@ -24,6 +24,7 @@ from modules.analytics.domain.entities import (  # noqa: E402
     ApprovedObservation,
     CatalogService,
     CompetitorLocation,
+    CompetitorSummary,
     Page,
 )
 from modules.analytics.infrastructure.unit_of_work import (  # noqa: E402
@@ -311,6 +312,7 @@ if engine is not None:
                         price_currency=row.price_currency,
                         observed_on=row.observed_on,
                         superseded_by=row.superseded_by,
+                        created_at=row.created_at,
                     )
                     for row in rows
                 ),
@@ -327,6 +329,27 @@ if engine is not None:
             return Page(
                 rows=tuple(
                     CatalogService(id=row.id, project_id=row.project_id, name=row.name)
+                    for row in rows
+                ),
+                truncated=truncated,
+            )
+
+        async def competitors(
+            self, *, project_id, competitor_ids=None, limit=DEFAULT_ROW_CAP
+        ):
+            from modules.competitor_intelligence.infrastructure.db import (
+                competitors as _competitors,
+            )
+
+            stmt = _select(_competitors).where(
+                _competitors.c.project_id == project_id
+            )
+            if competitor_ids is not None:
+                stmt = stmt.where(_competitors.c.id.in_(competitor_ids))
+            rows, truncated = await self._query(stmt, limit=limit)
+            return Page(
+                rows=tuple(
+                    CompetitorSummary(id=row.id, project_id=row.project_id, name=row.name)
                     for row in rows
                 ),
                 truncated=truncated,

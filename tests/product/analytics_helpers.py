@@ -15,6 +15,7 @@ from modules.analytics.domain.entities import (
     ApprovedObservation,
     CatalogService,
     CompetitorLocation,
+    CompetitorSummary,
     Page,
 )
 
@@ -87,6 +88,7 @@ class TestApprovedFactsSource:
                     price_currency=row.price_currency,
                     observed_on=row.observed_on,
                     superseded_by=row.superseded_by,
+                    created_at=row.created_at,
                 )
                 for row in rows
             ),
@@ -105,6 +107,33 @@ class TestApprovedFactsSource:
         return Page(
             rows=tuple(
                 CatalogService(id=row.id, project_id=row.project_id, name=row.name)
+                for row in rows
+            ),
+            truncated=truncated,
+        )
+
+    async def competitors(
+        self,
+        *,
+        project_id,
+        competitor_ids=None,
+        limit: int = DEFAULT_ROW_CAP,
+    ) -> Page[CompetitorSummary]:
+        from modules.competitor_intelligence.infrastructure.db import (
+            competitors as competitors_table,
+        )
+
+        stmt = select(competitors_table).where(
+            competitors_table.c.project_id == project_id
+        )
+        if competitor_ids is not None:
+            stmt = stmt.where(competitors_table.c.id.in_(competitor_ids))
+        rows, truncated = await self._query(stmt, limit=limit)
+        return Page(
+            rows=tuple(
+                CompetitorSummary(
+                    id=row.id, project_id=row.project_id, name=row.name
+                )
                 for row in rows
             ),
             truncated=truncated,

@@ -15,6 +15,7 @@ from modules.analytics.domain.entities import (
     ApprovedObservation,
     CatalogService,
     CompetitorLocation,
+    CompetitorSummary,
     Page,
 )
 
@@ -37,6 +38,14 @@ class ApprovedFactsSource(Protocol):
     async def services(
         self, *, project_id: UUID, limit: int
     ) -> Page[CatalogService]: ...
+
+    async def competitors(
+        self,
+        *,
+        project_id: UUID,
+        competitor_ids: tuple[UUID, ...] | None = None,
+        limit: int,
+    ) -> Page[CompetitorSummary]: ...
 
     async def locations(
         self,

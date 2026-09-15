@@ -4,7 +4,7 @@ errors. Pure domain — no framework or cross-module imports
 """
 
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Generic, TypeVar
 from uuid import UUID
@@ -43,6 +43,16 @@ class ApprovedObservation:
     price_currency: str | None
     observed_on: date
     superseded_by: UUID | None
+    created_at: datetime
+
+
+@dataclass(frozen=True)
+class CompetitorSummary:
+    """Read view of a competitor for analytics joins (names only)."""
+
+    id: UUID
+    project_id: UUID
+    name: str
 
 
 @dataclass(frozen=True)
@@ -75,6 +85,7 @@ __all__ = [
     "AnalyticsQueryError",
     "ApprovedObservation",
     "CatalogService",
+    "CompetitorSummary",
     "CompetitorLocation",
     "DEFAULT_ROW_CAP",
     "MetricResult",
