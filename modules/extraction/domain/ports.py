@@ -47,6 +47,8 @@ class ProposedFact:
     price_amount: Decimal | None = None
     price_currency: str | None = None
     excerpt: str | None = None
+    claim: str | None = None
+    sentiment: str | None = None
 
 
 @runtime_checkable

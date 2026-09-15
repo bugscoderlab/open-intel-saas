@@ -108,4 +108,54 @@ def build_analytics_router() -> APIRouter:
         )
         return _metric_response(result)
 
+    @router.get(
+        "/projects/{project_id}/competitors/{competitor_id}"
+        "/analytics/review-topics",
+        response_model=MetricResponse,
+    )
+    @endpoint
+    async def review_topics(
+        project_id: UUID,
+        competitor_id: UUID,
+        unit: AnalyticsUnitDep,
+        principal: PrincipalDep,
+        authz: AuthzDep,
+        source: FactsSourceDep,
+    ) -> MetricResponse:
+        result = await analytics_service.run_metric(
+            unit,
+            authz,
+            principal,
+            source,
+            metric_name="review_topics",
+            project_id=project_id,
+            competitor_ids=(competitor_id,),
+        )
+        return _metric_response(result)
+
+    @router.get(
+        "/projects/{project_id}/competitors/{competitor_id}"
+        "/analytics/locations",
+        response_model=MetricResponse,
+    )
+    @endpoint
+    async def location_comparison(
+        project_id: UUID,
+        competitor_id: UUID,
+        unit: AnalyticsUnitDep,
+        principal: PrincipalDep,
+        authz: AuthzDep,
+        source: FactsSourceDep,
+    ) -> MetricResponse:
+        result = await analytics_service.run_metric(
+            unit,
+            authz,
+            principal,
+            source,
+            metric_name="location_comparison",
+            project_id=project_id,
+            competitor_ids=(competitor_id,),
+        )
+        return _metric_response(result)
+
     return router

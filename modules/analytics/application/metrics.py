@@ -172,6 +172,128 @@ async def _service_coverage(
         truncated=competitors.truncated or services.truncated or observations.truncated,
     )
 
+async def _review_topics(
+    source: "ApprovedFactsSource", project_id: UUID, params: MetricParams
+) -> MetricResult:
+    """Approved review topics per competitor: mention count, dominant
+    sentiment (plurality; exact tie -> 'mixed'), latest observation
+    date. Topic identity is the observation claim text (#56)."""
+    competitor_id = params.competitor_ids[0] if params.competitor_ids else None
+    page = await source.approved_observations(
+        project_id=project_id,
+        competitor_id=competitor_id,
+        kinds=frozenset({"review_topic"}),
+        limit=_ROW_LIMIT,
+    )
+    groups: dict[tuple[UUID, str], dict] = {}
+    for row in page.rows:
+        topic = row.claim or "(unlabeled)"
+        key = (row.competitor_id, topic)
+        group = groups.setdefault(
+            key,
+            {"mentions": 0, "sentiments": {}, "latest": row.observed_on},
+        )
+        group["mentions"] += 1
+        if row.sentiment:
+            group["sentiments"][row.sentiment] = (
+                group["sentiments"].get(row.sentiment, 0) + 1
+            )
+        if row.observed_on > group["latest"]:
+            group["latest"] = row.observed_on
+
+    points = []
+    for (competitor, topic), group in sorted(
+        groups.items(), key=lambda item: (str(item[0][0]), item[0][1])
+    ):
+        sentiments = group["sentiments"]
+        if not sentiments:
+            dominant = None
+        else:
+            ranked = sorted(sentiments.items(), key=lambda kv: (-kv[1], kv[0]))
+            dominant = (
+                "mixed"
+                if len(ranked) > 1 and ranked[0][1] == ranked[1][1]
+                else ranked[0][0]
+            )
+        points.append(
+            {
+                "competitor_id": str(competitor),
+                "topic": topic,
+                "mentions": group["mentions"],
+                "dominant_sentiment": dominant,
+                "latest_observed_on": group["latest"].isoformat(),
+            }
+        )
+    return MetricResult(
+        metric="review_topics",
+        unit="mentions",
+        description="Approved review topics per competitor with dominant sentiment.",
+        points=tuple(points),
+        truncated=page.truncated,
+    )
+
+
+async def _location_comparison(
+    source: "ApprovedFactsSource", project_id: UUID, params: MetricParams
+) -> MetricResult:
+    """One competitor's approved facts grouped by location scope: per
+    (location, kind) counts + latest values, with a market-level roll-up
+    row for NULL-location observations (extraction does not attribute
+    locations yet — the roll-up makes that explicit)."""
+    competitor_id = params.competitor_ids[0] if params.competitor_ids else None
+    locations_page = await source.locations(
+        project_id=project_id, competitor_id=competitor_id, limit=_ROW_LIMIT
+    )
+    observations = await source.approved_observations(
+        project_id=project_id,
+        competitor_id=competitor_id,
+        limit=_ROW_LIMIT,
+    )
+    location_names = {row.id: row.name for row in locations_page.rows}
+
+    cells: dict[tuple[UUID | None, str], dict] = {}
+    for row in observations.rows:
+        key = (row.location_id, row.kind)
+        cell = cells.setdefault(
+            key,
+            {
+                "count": 0,
+                "latest": row.observed_on,
+                "price_amount": None,
+                "price_currency": None,
+            },
+        )
+        cell["count"] += 1
+        if row.observed_on >= cell["latest"]:
+            cell["latest"] = row.observed_on
+            if row.price_amount is not None:
+                cell["price_amount"] = str(row.price_amount)
+                cell["price_currency"] = row.price_currency
+
+    points = tuple(
+        {
+            "location_id": str(location_id) if location_id else None,
+            "location_name": (
+                location_names.get(location_id) if location_id is not None else None
+            ),
+            "kind": kind,
+            "count": cell["count"],
+            "latest_observed_on": cell["latest"].isoformat(),
+            "latest_price_amount": cell["price_amount"],
+            "latest_price_currency": cell["price_currency"],
+        }
+        for (location_id, kind), cell in sorted(
+            cells.items(), key=lambda item: (str(item[0][0]), item[0][1])
+        )
+    )
+    return MetricResult(
+        metric="location_comparison",
+        unit="observations",
+        description="Approved observations per location scope and kind, with market roll-up.",
+        points=points,
+        truncated=locations_page.truncated or observations.truncated,
+    )
+
 
 # The registry: metrics are looked up by name for both the JSON
 # endpoints and CSV export (spec #57 reuses these functions).
@@ -195,6 +317,18 @@ METRICS: dict[str, Metric] = {
             unit="services",
             description="Coverage of the service catalog per competitor.",
             compute=_service_coverage,
+        ),
+        Metric(
+            name="review_topics",
+            unit="mentions",
+            description="Approved review topics per competitor with dominant sentiment.",
+            compute=_review_topics,
+        ),
+        Metric(
+            name="location_comparison",
+            unit="observations",
+            description="Approved observations per location scope and kind.",
+            compute=_location_comparison,
         ),
     )
 }

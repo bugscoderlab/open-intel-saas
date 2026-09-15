@@ -25,6 +25,9 @@ OBSERVATION_STATES = (
     OBSERVATION_SUPERSEDED,
 )
 KIND_PRICE = "price"
+KIND_REVIEW_TOPIC = "review_topic"
+KIND_PROMOTION = "promotion"
+KIND_POSITIONING = "positioning"
 # Manual observations: human-verified, so full confidence; the version
 # marker keeps the extraction-version contract populated from day one
 # (spec #31 assumption 3).
@@ -90,6 +93,10 @@ class Observation:
     approval_state: str
     superseded_by: UUID | None
     created_by: UUID
+    # Extraction metadata (ticket #56): the normalized claim text and,
+    # for review topics, the sentiment. NULL on manual rows.
+    claim: str | None = None
+    sentiment: str | None = None
 
 
 # Evidence targets (ticket #35): the kinds of research rows a link may
@@ -119,6 +126,8 @@ class ProposedObservation:
     price_amount: Decimal | None = None
     price_currency: str | None = None
     excerpt: str | None = None
+    claim: str | None = None
+    sentiment: str | None = None
 
 
 @dataclass(frozen=True)

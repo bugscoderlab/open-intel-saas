@@ -111,6 +111,9 @@ observations = Table(
     Column("extraction_version", Text, nullable=False),
     Column("approval_state", Text, nullable=False),
     Column("superseded_by", SAUUID, nullable=True),
+    # Extraction metadata (ticket #56) — see migration 0022.
+    Column("claim", Text, nullable=True),
+    Column("sentiment", Text, nullable=True),
     Column("created_by", SAUUID, ForeignKey("app_users.id"), nullable=False),
     Column("created_at", DateTime(timezone=True), server_default=func.now()),
     Column("updated_at", DateTime(timezone=True), server_default=func.now()),

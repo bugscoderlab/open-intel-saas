@@ -13,6 +13,7 @@ from uuid import UUID, uuid4
 from modules.competitor_intelligence.domain.entities import (
     EVIDENCE_TARGET_SNAPSHOT,
     KIND_PRICE,
+    KIND_REVIEW_TOPIC,
     MANUAL_CONFIDENCE,
     MANUAL_EXTRACTION_VERSION,
     OBSERVATION_APPROVED,
@@ -49,14 +50,30 @@ async def _load_competitor_scope(
 
 
 def _same_group(a: Observation, b: Observation) -> bool:
-    """Same comparison cell: (competitor, service, location, kind) —
-    NULLs compare as equal (a market-level fact has no location)."""
-    return (
+    """Same comparison cell — the supersede scope at approval time
+    (glossary: Change). Three shapes, recorded on ticket #56:
+
+    * review_topic rows are NEVER the same group: mentions accumulate
+      (a topic's sentiment is a distribution, not a point-in-time
+      value), so approving one never supersedes another.
+    * price cells are (competitor, service, location, kind): the value
+      defines the cell; the claim text is context, not identity.
+    * other claim-bearing kinds (promotion, positioning): the claim is
+      the cell identity, so distinct claims coexist.
+    NULL service/location compare as equal (market-level facts)."""
+    if a.kind == KIND_REVIEW_TOPIC or b.kind == KIND_REVIEW_TOPIC:
+        return False
+    same_cell = (
         a.competitor_id == b.competitor_id
         and a.service_id == b.service_id
         and a.location_id == b.location_id
         and a.kind == b.kind
     )
+    if not same_cell:
+        return False
+    if a.kind == KIND_PRICE:
+        return True
+    return (a.claim or "") == (b.claim or "")
 
 
 def _same_value(a: Observation, b: Observation) -> bool:
@@ -121,6 +138,8 @@ async def create_observation(
         approval_state=OBSERVATION_PENDING,
         superseded_by=None,
         created_by=principal.app_user_id,
+        claim=None,
+        sentiment=None,
     )
     await unit.observations.create(observation)
     await unit.audit.record(
@@ -299,6 +318,8 @@ async def approve_observation(
         approval_state=OBSERVATION_APPROVED,
         superseded_by=None,
         created_by=observation.created_by,
+        claim=observation.claim,
+        sentiment=observation.sentiment,
     )
 
 
@@ -428,6 +449,8 @@ async def record_proposed_observations(
             approval_state=OBSERVATION_PENDING,
             superseded_by=None,
             created_by=recorded_by,
+            claim=item.claim,
+            sentiment=item.sentiment,
         )
         await unit.observations.create(observation)
         await unit.evidence.create(

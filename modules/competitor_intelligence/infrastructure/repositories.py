@@ -305,6 +305,8 @@ def _row_to_observation(row: Row) -> Observation:
         approval_state=row.approval_state,
         superseded_by=row.superseded_by,
         created_by=row.created_by,
+        claim=row.claim,
+        sentiment=row.sentiment,
     )
 
 
@@ -333,6 +335,8 @@ class SqlObservations:
                 approval_state=observation.approval_state,
                 superseded_by=observation.superseded_by,
                 created_by=observation.created_by,
+                claim=observation.claim,
+                sentiment=observation.sentiment,
             )
         )
 

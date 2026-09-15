@@ -44,6 +44,8 @@ class ApprovedObservation:
     observed_on: date
     superseded_by: UUID | None
     created_at: datetime
+    claim: str | None = None
+    sentiment: str | None = None
 
 
 @dataclass(frozen=True)

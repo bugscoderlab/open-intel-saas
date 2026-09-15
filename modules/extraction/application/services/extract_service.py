@@ -140,6 +140,8 @@ async def _process_run(
                 price_amount=item.price_amount,
                 price_currency=item.price_currency,
                 excerpt=item.excerpt,
+                claim=item.claim,
+                sentiment=item.sentiment,
             )
             for item in result.items
         ]
