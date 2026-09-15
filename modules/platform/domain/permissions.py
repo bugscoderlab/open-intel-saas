@@ -83,6 +83,7 @@ class Permission:
     EVIDENCE_DELETE = "evidence.delete"
     SNAPSHOT_READ = "snapshot.read"
     COLLECTION_RUN = "collection.run"
+    COLLECTION_JOB_MANAGE = "collection.job.manage"
 
 
 ALL_PERMISSIONS = frozenset(
@@ -203,6 +204,7 @@ SNAPSHOT_PERMISSIONS = frozenset(
 COLLECTION_PERMISSIONS = frozenset(
     {
         Permission.COLLECTION_RUN,
+        Permission.COLLECTION_JOB_MANAGE,
     }
 )
 

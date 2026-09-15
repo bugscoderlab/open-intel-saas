@@ -7,3 +7,4 @@ the job up to know which tenancy it belongs to.
 
 COLLECTION_JOB_REQUESTED = "CollectionJobRequested"
 COLLECTION_SNAPSHOT_CREATED = "CollectionSnapshotCreated"
+COLLECTION_DUE = "CollectionDue"

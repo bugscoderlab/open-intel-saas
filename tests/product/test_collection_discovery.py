@@ -124,7 +124,7 @@ class TestMapsDiscovery:
                 project_id,
             )
             jobs = await conn.fetchval(
-                "select count(*) from collection.jobs where project_id = $1",
+                "select count(*) from collection.job_runs where project_id = $1",
                 project_id,
             )
         finally:

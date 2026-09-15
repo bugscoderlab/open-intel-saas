@@ -10,7 +10,7 @@ from datetime import datetime
 from typing import Protocol
 from uuid import UUID
 
-from modules.collection.domain.entities import Job, Snapshot
+from modules.collection.domain.entities import Job, JobRun, Snapshot
 from modules.platform.domain.unit_of_work import PlatformUnit
 
 
@@ -39,18 +39,46 @@ class Snapshots(Protocol):
 
 
 class Jobs(Protocol):
-    """Job repository — one row per collection attempt."""
+    """Schedule repository. The scheduler's claim is transactional:
+    creating the run row, the outbox event, and advancing next_due_at
+    commit together (ADR-004), so a claimed job can never be claimed
+    twice."""
 
     async def create(self, job: Job) -> None: ...
     async def get(
         self, organization_id: UUID, project_id: UUID, job_id: UUID
     ) -> Job | None: ...
-    async def list_pending(self, *, limit: int = 100) -> list[Job]: ...
-    async def mark_result(
+    async def list_for_competitor(
+        self, organization_id: UUID, project_id: UUID, competitor_id: UUID
+    ) -> list[Job]: ...
+    async def delete(
+        self, organization_id: UUID, project_id: UUID, job_id: UUID
+    ) -> None: ...
+    async def list_due(self, now: datetime, *, limit: int = 100) -> list[Job]: ...
+    async def advance(
         self,
         organization_id: UUID,
         project_id: UUID,
         job_id: UUID,
+        *,
+        next_due_at: datetime,
+        failures: int,
+    ) -> None: ...
+
+
+class JobRuns(Protocol):
+    """Attempt repository — one row per collection attempt."""
+
+    async def create(self, run: JobRun) -> None: ...
+    async def get(
+        self, organization_id: UUID, project_id: UUID, run_id: UUID
+    ) -> JobRun | None: ...
+    async def list_pending(self, *, limit: int = 100) -> list[JobRun]: ...
+    async def mark_result(
+        self,
+        organization_id: UUID,
+        project_id: UUID,
+        run_id: UUID,
         *,
         status: str,
         snapshot_id: UUID | None,
@@ -59,9 +87,12 @@ class Jobs(Protocol):
     async def count_since(
         self, organization_id: UUID, project_id: UUID, since: datetime
     ) -> int: ...
+    async def list_for_job(
+        self, organization_id: UUID, project_id: UUID, job_id: UUID
+    ) -> list[JobRun]: ...
 
 
-__all__ = ["Snapshots", "Jobs", "CollectionUnit"]
+__all__ = ["Snapshots", "Jobs", "JobRuns", "CollectionUnit"]
 
 
 class CollectionUnit(PlatformUnit, Protocol):
@@ -70,3 +101,4 @@ class CollectionUnit(PlatformUnit, Protocol):
 
     snapshots: Snapshots
     jobs: Jobs
+    job_runs: JobRuns

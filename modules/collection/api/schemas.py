@@ -17,6 +17,12 @@ class CollectionRequest(BaseModel):
     url: str = Field(min_length=1, max_length=2000)
 
 
+class JobCreateRequest(BaseModel):
+    connector_kind: Literal["website"] = "website"
+    url: str = Field(min_length=1, max_length=2000)
+    interval_seconds: int = Field(ge=1, le=31_536_000)
+
+
 class DiscoverRequest(BaseModel):
     query: str = Field(min_length=1, max_length=500)
     location: str = Field(min_length=1, max_length=500)
@@ -35,6 +41,8 @@ class CandidateResponse(BaseModel):
 
 
 class JobResponse(BaseModel):
+    """A collection schedule (ticket #44)."""
+
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
@@ -43,10 +51,32 @@ class JobResponse(BaseModel):
     competitor_id: UUID
     connector_kind: str
     url: str
+    interval_seconds: int
+    next_due_at: datetime
+    enabled: bool
+    failures: int
+    created_by: UUID
+
+
+class JobRunResponse(BaseModel):
+    """One collection attempt — scheduled or ad-hoc."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    organization_id: UUID
+    project_id: UUID
+    job_id: UUID | None
+    competitor_id: UUID
+    connector_kind: str
+    url: str
     status: str
     snapshot_id: UUID | None
     error: str | None
+    attempt: int
     requested_by: UUID
+    run_at: datetime
+    finished_at: datetime | None
 
 
 class SnapshotResponse(BaseModel):

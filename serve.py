@@ -20,6 +20,7 @@ from modules.collection.api.routers import (  # noqa: E402
 )
 from modules.collection.infrastructure.dispatcher import (  # noqa: E402
     run_collection_dispatcher,
+    run_collection_scheduler,
 )
 from modules.collection.infrastructure.google_places import (  # noqa: E402
     GooglePlacesMapsProvider,
@@ -142,4 +143,9 @@ if engine is not None:
         # POST enqueues; this loop fetches and snapshots until shutdown.
         asyncio.create_task(
             run_collection_dispatcher(dispatcher_engine, collection_fetcher)
+        )
+        # Scheduled collection (ticket #44): claims due schedules through
+        # the outbox and runs them through the same pipeline.
+        asyncio.create_task(
+            run_collection_scheduler(dispatcher_engine, collection_fetcher)
         )

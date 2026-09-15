@@ -1,4 +1,4 @@
-"""HTTP routers for the collection module (ticket #42, spec #41).
+"""HTTP routers for the collection module (tickets #42/#43/#44, spec #41).
 
 Routers stay thin: parse, call a service, map typed errors to statuses —
 mirroring the platform/research/competitor boundary. All authorization
@@ -23,14 +23,21 @@ from modules.collection.api.schemas import (
     CandidateResponse,
     CollectionRequest,
     DiscoverRequest,
+    JobCreateRequest,
     JobResponse,
+    JobRunResponse,
     SnapshotDetailResponse,
     SnapshotResponse,
 )
-from modules.collection.application.services import collect_service, discovery_service
+from modules.collection.application.services import (
+    collect_service,
+    discovery_service,
+    job_service,
+)
 from modules.collection.domain.entities import (
     CONNECTOR_WEBSITE,
     Job,
+    JobRun,
     Snapshot,
 )
 from modules.platform.api.routers import endpoint
@@ -44,10 +51,30 @@ def _job_response(job: Job) -> JobResponse:
         competitor_id=job.competitor_id,
         connector_kind=job.connector_kind,
         url=job.url,
-        status=job.status,
-        snapshot_id=job.snapshot_id,
-        error=job.error,
-        requested_by=job.requested_by,
+        interval_seconds=job.interval_seconds,
+        next_due_at=job.next_due_at,
+        enabled=job.enabled,
+        failures=job.failures,
+        created_by=job.created_by,
+    )
+
+
+def _run_response(run: JobRun) -> JobRunResponse:
+    return JobRunResponse(
+        id=run.id,
+        organization_id=run.organization_id,
+        project_id=run.project_id,
+        job_id=run.job_id,
+        competitor_id=run.competitor_id,
+        connector_kind=run.connector_kind,
+        url=run.url,
+        status=run.status,
+        snapshot_id=run.snapshot_id,
+        error=run.error,
+        attempt=run.attempt,
+        requested_by=run.requested_by,
+        run_at=run.run_at,
+        finished_at=run.finished_at,
     )
 
 
@@ -70,7 +97,7 @@ def build_collection_router() -> APIRouter:
 
     @router.post(
         "/projects/{project_id}/competitors/{competitor_id}/collections",
-        response_model=JobResponse,
+        response_model=JobRunResponse,
         status_code=202,
     )
     @endpoint
@@ -82,8 +109,8 @@ def build_collection_router() -> APIRouter:
         unit: CollectionUnitDep,
         principal: PrincipalDep,
         authz: AuthzDep,
-    ) -> JobResponse:
-        job = await collect_service.request_collection(
+    ) -> JobRunResponse:
+        run = await collect_service.request_collection(
             unit,
             authz,
             principal,
@@ -93,7 +120,126 @@ def build_collection_router() -> APIRouter:
             url=body.url,
             quota=getattr(request.app.state, "collection_quota", None),
         )
+        return _run_response(run)
+
+    @router.post(
+        "/projects/{project_id}/competitors/{competitor_id}/jobs",
+        response_model=JobResponse,
+        status_code=201,
+    )
+    @endpoint
+    async def create_job(
+        project_id: UUID,
+        competitor_id: UUID,
+        body: JobCreateRequest,
+        request: Request,
+        unit: CollectionUnitDep,
+        principal: PrincipalDep,
+        authz: AuthzDep,
+    ) -> JobResponse:
+        job = await job_service.create_job(
+            unit,
+            authz,
+            principal,
+            project_id=project_id,
+            competitor_id=competitor_id,
+            connector_kind=body.connector_kind,
+            url=body.url,
+            interval_seconds=body.interval_seconds,
+            quota=getattr(request.app.state, "collection_quota", None),
+        )
         return _job_response(job)
+
+    @router.get(
+        "/projects/{project_id}/competitors/{competitor_id}/jobs",
+        response_model=list[JobResponse],
+    )
+    @endpoint
+    async def list_jobs(
+        project_id: UUID,
+        competitor_id: UUID,
+        unit: CollectionUnitDep,
+        principal: PrincipalDep,
+        authz: AuthzDep,
+    ) -> list[JobResponse]:
+        jobs = await job_service.list_jobs(
+            unit,
+            authz,
+            principal,
+            project_id=project_id,
+            competitor_id=competitor_id,
+        )
+        return [_job_response(j) for j in jobs]
+
+    @router.delete(
+        "/projects/{project_id}/competitors/{competitor_id}/jobs/{job_id}",
+        status_code=204,
+    )
+    @endpoint
+    async def delete_job(
+        project_id: UUID,
+        competitor_id: UUID,
+        job_id: UUID,
+        unit: CollectionUnitDep,
+        principal: PrincipalDep,
+        authz: AuthzDep,
+    ) -> None:
+        await job_service.delete_job(
+            unit,
+            authz,
+            principal,
+            project_id=project_id,
+            competitor_id=competitor_id,
+            job_id=job_id,
+        )
+
+    @router.post(
+        "/projects/{project_id}/competitors/{competitor_id}/jobs/{job_id}/run",
+        response_model=JobRunResponse,
+        status_code=202,
+    )
+    @endpoint
+    async def run_job_now(
+        project_id: UUID,
+        competitor_id: UUID,
+        job_id: UUID,
+        request: Request,
+        unit: CollectionUnitDep,
+        principal: PrincipalDep,
+        authz: AuthzDep,
+    ) -> JobRunResponse:
+        run = await job_service.run_job_now(
+            unit,
+            authz,
+            principal,
+            project_id=project_id,
+            competitor_id=competitor_id,
+            job_id=job_id,
+            quota=getattr(request.app.state, "collection_quota", None),
+        )
+        return _run_response(run)
+
+    @router.get(
+        "/projects/{project_id}/competitors/{competitor_id}/jobs/{job_id}/runs",
+        response_model=list[JobRunResponse],
+    )
+    @endpoint
+    async def list_runs(
+        project_id: UUID,
+        competitor_id: UUID,
+        job_id: UUID,
+        unit: CollectionUnitDep,
+        principal: PrincipalDep,
+        authz: AuthzDep,
+    ) -> list[JobRunResponse]:
+        runs = await job_service.list_runs(
+            unit,
+            authz,
+            principal,
+            project_id=project_id,
+            job_id=job_id,
+        )
+        return [_run_response(r) for r in runs]
 
     @router.post(
         "/projects/{project_id}/discover",

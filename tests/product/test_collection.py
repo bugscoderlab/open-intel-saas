@@ -162,8 +162,8 @@ class TestOnDemandCollection:
         conn = await asyncpg.connect(settings.database_dsn_asyncpg)
         try:
             rows = await conn.fetch(
-                "select status from collection.jobs where project_id = $1"
-                " order by created_at",
+                "select status from collection.job_runs where project_id = $1"
+                " order by run_at",
                 project_id,
             )
         finally:
@@ -234,8 +234,8 @@ class TestOnDemandCollection:
         conn = await asyncpg.connect(settings.database_dsn_asyncpg)
         try:
             rows = await conn.fetch(
-                "select status, error from collection.jobs"
-                " where project_id = $1 order by created_at",
+                "select status, error from collection.job_runs"
+                " where project_id = $1 order by run_at",
                 project_id,
             )
         finally:

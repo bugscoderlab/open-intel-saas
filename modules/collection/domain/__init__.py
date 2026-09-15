@@ -9,6 +9,7 @@ from modules.collection.domain.entities import (
     JOB_STATES,
     JOB_UNCHANGED,
     Job,
+    JobRun,
     Snapshot,
 )
 
@@ -21,5 +22,6 @@ __all__ = [
     "JOB_STATES",
     "JOB_UNCHANGED",
     "Job",
+    "JobRun",
     "Snapshot",
 ]
