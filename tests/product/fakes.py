@@ -131,3 +131,28 @@ class FakeWebsiteFetcher:
             content=self.pages.get(url, "<html><body>default page</body></html>"),
             fetched_at=datetime.now(UTC),
         )
+
+
+class FakeMapsProvider:
+    """Fake MapsProvider port (collection, ticket #43): scripted
+    candidates keyed by (query, location), an optional exception to
+    raise on every call, and a recording of every query. No network."""
+
+    def __init__(
+        self,
+        candidates: dict[tuple[str, str], list] | None = None,
+    ) -> None:
+        self.candidates = candidates or {}
+        self.fail_with: Exception | None = None
+        self.queries: list[tuple[str, str]] = []
+
+    async def discover(self, *, query: str, location: str):
+        from modules.collection.domain.ports import MapCandidate
+
+        self.queries.append((query, location))
+        if self.fail_with is not None:
+            raise self.fail_with
+        return [
+            MapCandidate(**candidate) if isinstance(candidate, dict) else candidate
+            for candidate in self.candidates.get((query, location), [])
+        ]

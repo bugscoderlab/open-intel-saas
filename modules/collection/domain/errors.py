@@ -27,8 +27,21 @@ class FetchQuotaExceededError(ConflictError):
     """The project's fetch quota (jobs created in the last 24h) is spent."""
 
 
+class MapsConfigurationError(ServiceUnavailableError):
+    """No maps provider key configured. Mirrors the embedder failure
+    policy (ticket #24): misconfiguration is visible and typed, never
+    silent — configure the environment and retry."""
+
+
+class MapsProviderError(ServiceUnavailableError):
+    """The configured maps provider failed mid-call (network, auth,
+    provider-reported error). Transient cases clear on retry."""
+
+
 __all__ = [
     "FetchTargetNotAllowedError",
     "FetchFailedError",
     "FetchQuotaExceededError",
+    "MapsConfigurationError",
+    "MapsProviderError",
 ]

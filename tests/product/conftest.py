@@ -30,7 +30,7 @@ def modules_root(tmp_path: Path) -> Iterator[Path]:
 # ---------------------------------------------------------------------------
 
 import uuid
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import dataclass, field
 
 import httpx
@@ -44,6 +44,7 @@ from modules.platform.infrastructure.email import RecordingEmailProvider
 from modules.platform.infrastructure.identity import SupabaseIdentityProvider
 from modules.platform.infrastructure.settings import Settings
 from modules.platform.infrastructure.unit_of_work import SqlPlatformUnit
+from tests.product.fakes import FakeWebsiteFetcher
 
 TEST_EMAIL_DOMAIN = "http-test.open-intel.dev"
 
@@ -236,6 +237,9 @@ async def app_client(
         collection_unit_factory=lambda: SqlCollectionUnit(engine),
     )
     app.state.recording_email = recording_email
+    from tests.product.fakes import FakeMapsProvider
+
+    app.state.collection_maps_provider = FakeMapsProvider()
     from tests.product.fakes import DeterministicEmbedder, RecordingFileStorage
 
     app.state.research_embedder = DeterministicEmbedder()
@@ -293,6 +297,9 @@ async def api(settings: Settings):
         collection_unit_factory=lambda: SqlCollectionUnit(engine),
     )
     app.state.recording_email = recording_email
+    from tests.product.fakes import FakeMapsProvider
+
+    app.state.collection_maps_provider = FakeMapsProvider()
     from tests.product.fakes import DeterministicEmbedder, RecordingFileStorage
 
     app.state.research_embedder = DeterministicEmbedder()
@@ -301,6 +308,26 @@ async def api(settings: Settings):
     client.app = app  # type: ignore[attr-defined] # convenience handle for tests
     async with client:
         yield client
+    await engine.dispose()
+
+
+@pytest_asyncio.fixture
+async def drain(settings) -> AsyncIterator[Callable[[FakeWebsiteFetcher], Awaitable[int]]]:
+    """Run the collection drain on demand, on a test-local engine that
+    dies with the test's event loop (mirrors the research drain fixture;
+    the session-scoped conftest engine's pooled connections bind to the
+    first loop that touched them)."""
+    engine = create_engine(settings.database_dsn)
+
+    async def _drain(fetcher: FakeWebsiteFetcher) -> int:
+        from modules.collection.application.services.collect_service import (
+            drain_pending_jobs,
+        )
+        from modules.collection.infrastructure.unit_of_work import SqlCollectionUnit
+
+        return await drain_pending_jobs(lambda: SqlCollectionUnit(engine), fetcher)
+
+    yield _drain
     await engine.dispose()
 
 

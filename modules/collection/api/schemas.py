@@ -17,6 +17,23 @@ class CollectionRequest(BaseModel):
     url: str = Field(min_length=1, max_length=2000)
 
 
+class DiscoverRequest(BaseModel):
+    query: str = Field(min_length=1, max_length=500)
+    location: str = Field(min_length=1, max_length=500)
+
+
+class CandidateResponse(BaseModel):
+    """One discovered business — data only, never persisted (spec #41
+    assumption 3)."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    name: str
+    address: str | None
+    website: str | None
+    provider_metadata: dict
+
+
 class JobResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

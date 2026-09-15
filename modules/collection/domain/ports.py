@@ -31,3 +31,28 @@ class WebsiteFetcher(Protocol):
     """
 
     async def fetch(self, url: str) -> FetchedPage: ...
+
+
+@dataclass(frozen=True)
+class MapCandidate:
+    """One business returned by a maps discovery query — data only,
+    never persisted (spec #41 assumption 3; adding a candidate stays
+    the Phase 3 manual competitor flow)."""
+
+    name: str
+    address: str | None
+    website: str | None
+    provider_metadata: dict
+
+
+class MapsProvider(Protocol):
+    """Discover candidate businesses by industry/query + location.
+
+    The reference adapter is infrastructure/google_places.py (env-keyed,
+    typed "not configured" error when the key is unset — the embedder
+    failure policy); tests substitute a fake at exactly this seam.
+    Implementations raise the typed domain errors — never transport
+    exceptions.
+    """
+
+    async def discover(self, *, query: str, location: str) -> list[MapCandidate]: ...

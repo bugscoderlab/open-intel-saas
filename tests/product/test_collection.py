@@ -11,7 +11,6 @@ stubbed DNS resolver — no network anywhere.
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator, Awaitable, Callable
 from datetime import UTC
 
 import asyncpg
@@ -21,35 +20,17 @@ import pytest_asyncio
 
 pytestmark = pytest.mark.asyncio
 
-from modules.collection.application.services.collect_service import drain_pending_jobs
 from modules.collection.domain.errors import (
     FetchFailedError,
     FetchTargetNotAllowedError,
 )
 from modules.collection.infrastructure.http_fetcher import HttpxWebsiteFetcher
-from modules.collection.infrastructure.unit_of_work import SqlCollectionUnit
-from modules.platform.infrastructure.db import create_engine
 from tests.product.conftest import TestUser, auth_headers
 from tests.product.fakes import FakeWebsiteFetcher
 from tests.product.research_helpers import new_project
 
 PRICING_PAGE = "<html><body>Full groom $45</body></html>"
 PRICING_PAGE_V2 = "<html><body>Full groom $49</body></html>"
-
-
-@pytest_asyncio.fixture
-async def drain(settings) -> AsyncIterator[Callable[[FakeWebsiteFetcher], Awaitable[int]]]:
-    """Run the collection drain on demand, on a test-local engine that
-    dies with the test's event loop (mirrors the research drain fixture;
-    the session-scoped conftest engine's pooled connections bind to the
-    first loop that touched them)."""
-    engine = create_engine(settings.database_dsn)
-
-    async def _drain(fetcher: FakeWebsiteFetcher) -> int:
-        return await drain_pending_jobs(lambda: SqlCollectionUnit(engine), fetcher)
-
-    yield _drain
-    await engine.dispose()
 
 
 @pytest_asyncio.fixture

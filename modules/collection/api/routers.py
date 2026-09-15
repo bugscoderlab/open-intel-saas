@@ -20,12 +20,14 @@ from modules.collection.api.deps import (
     PrincipalDep,
 )
 from modules.collection.api.schemas import (
+    CandidateResponse,
     CollectionRequest,
+    DiscoverRequest,
     JobResponse,
     SnapshotDetailResponse,
     SnapshotResponse,
 )
-from modules.collection.application.services import collect_service
+from modules.collection.application.services import collect_service, discovery_service
 from modules.collection.domain.entities import (
     CONNECTOR_WEBSITE,
     Job,
@@ -92,6 +94,38 @@ def build_collection_router() -> APIRouter:
             quota=getattr(request.app.state, "collection_quota", None),
         )
         return _job_response(job)
+
+    @router.post(
+        "/projects/{project_id}/discover",
+        response_model=list[CandidateResponse],
+        status_code=200,
+    )
+    @endpoint
+    async def discover_businesses(
+        project_id: UUID,
+        body: DiscoverRequest,
+        request: Request,
+        unit: CollectionUnitDep,
+        principal: PrincipalDep,
+        authz: AuthzDep,
+    ) -> list[CandidateResponse]:
+        from modules.collection.domain.errors import MapsConfigurationError
+
+        provider = getattr(request.app.state, "collection_maps_provider", None)
+        if provider is None:
+            # Wired off (tests/embedded apps): fail visible and typed,
+            # exactly like an unconfigured provider would.
+            raise MapsConfigurationError("maps provider is not configured")
+        candidates = await discovery_service.discover_businesses(
+            unit,
+            authz,
+            principal,
+            project_id=project_id,
+            query=body.query,
+            location=body.location,
+            provider=provider,
+        )
+        return [CandidateResponse.model_validate(c) for c in candidates]
 
     @router.get(
         "/projects/{project_id}/competitors/{competitor_id}/snapshots",

@@ -59,6 +59,7 @@ class Settings:
     storage_bucket: str = "open-intel-files"
     seed_password: str = "seed-password-change-me"
     collection_daily_fetch_quota: int = 100
+    maps_api_key: str = ""
 
     @classmethod
     def from_env(cls, environ: Mapping[str, str] | None = None) -> "Settings":
@@ -86,6 +87,7 @@ class Settings:
             collection_daily_fetch_quota=int(
                 environ.get("OPEN_INTEL_COLLECTION_DAILY_FETCH_QUOTA", "100")
             ),
+            maps_api_key=environ.get("OPEN_INTEL_MAPS_API_KEY", ""),
         )
 
     @property

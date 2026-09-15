@@ -21,6 +21,9 @@ from modules.collection.api.routers import (  # noqa: E402
 from modules.collection.infrastructure.dispatcher import (  # noqa: E402
     run_collection_dispatcher,
 )
+from modules.collection.infrastructure.google_places import (  # noqa: E402
+    GooglePlacesMapsProvider,
+)
 from modules.collection.infrastructure.http_fetcher import (  # noqa: E402
     HttpxWebsiteFetcher,
 )
@@ -119,6 +122,13 @@ if engine is not None:
     app.state.collection_quota = settings.collection_daily_fetch_quota
     collection_fetcher = HttpxWebsiteFetcher()
     app.state.collection_fetcher = collection_fetcher
+    # Maps discovery (spec #41): the MapsProvider port's reference
+    # adapter, keyed from the environment. Unconfigured is fine at boot
+    # — discover() raises the typed "not configured" error per call
+    # (the embedder failure policy, ticket #24).
+    app.state.collection_maps_provider = GooglePlacesMapsProvider(
+        api_key=settings.maps_api_key
+    )
 
     @app.on_event("startup")
     async def _start_research_dispatcher() -> None:
