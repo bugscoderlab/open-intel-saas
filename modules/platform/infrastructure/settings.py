@@ -42,6 +42,13 @@ class Settings:
         embedding_model: Embedding model name (e.g. "text-embedding-3-small").
         embedding_api_key: Optional provider key; empty = the provider's
             standard env var applies (spec #21, ticket #24).
+        extraction_provider: LLM provider for structured extraction
+            (Esperanto name). Empty = extraction disabled: extraction
+            runs land failed/retryable rather than blocking enqueue
+            (spec #47, ticket #49).
+        extraction_model: Extraction model name.
+        extraction_api_key: Optional provider key; empty = the
+            provider's standard env var applies.
         seed_password: Password for users created by ``make seed``.
     """
 
@@ -56,6 +63,9 @@ class Settings:
     embedding_provider: str = ""
     embedding_model: str = ""
     embedding_api_key: str = ""
+    extraction_provider: str = ""
+    extraction_model: str = ""
+    extraction_api_key: str = ""
     storage_bucket: str = "open-intel-files"
     seed_password: str = "seed-password-change-me"
     collection_daily_fetch_quota: int = 100
@@ -80,6 +90,9 @@ class Settings:
             embedding_provider=environ.get("OPEN_INTEL_EMBEDDING_PROVIDER", ""),
             embedding_model=environ.get("OPEN_INTEL_EMBEDDING_MODEL", ""),
             embedding_api_key=environ.get("OPEN_INTEL_EMBEDDING_API_KEY", ""),
+            extraction_provider=environ.get("OPEN_INTEL_EXTRACTION_PROVIDER", ""),
+            extraction_model=environ.get("OPEN_INTEL_EXTRACTION_MODEL", ""),
+            extraction_api_key=environ.get("OPEN_INTEL_EXTRACTION_API_KEY", ""),
             storage_bucket=environ.get("OPEN_INTEL_STORAGE_BUCKET", "open-intel-files"),
             seed_password=environ.get(
                 "OPEN_INTEL_SEED_PASSWORD", "seed-password-change-me"
