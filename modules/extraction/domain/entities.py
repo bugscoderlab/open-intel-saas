@@ -8,6 +8,7 @@ Observations; approval is a separate human gate (#51).
 
 from dataclasses import dataclass, field
 from decimal import Decimal
+from uuid import UUID
 
 KIND_SERVICE = "service"
 KIND_PRICE = "price"
@@ -57,3 +58,28 @@ class ExtractionResult:
 
     def of_kind(self, kind: str) -> tuple[ExtractedItem, ...]:
         return tuple(item for item in self.items if item.kind == kind)
+
+RUN_PENDING = "pending"
+RUN_SUCCEEDED = "succeeded"
+RUN_FAILED = "failed"
+RUN_STATES = (RUN_PENDING, RUN_SUCCEEDED, RUN_FAILED)
+
+
+@dataclass(frozen=True)
+class ExtractionRun:
+    """One extraction attempt over one collection snapshot (ticket #50).
+
+    Enqueued through the outbox (ADR-004) and drained off-request; the
+    partial unique index on (project, snapshot, version) makes a
+    pending/succeeded run idempotent at request time, and a failed run
+    can be re-enqueued for retry."""
+
+    id: UUID
+    organization_id: UUID
+    project_id: UUID
+    competitor_id: UUID
+    snapshot_id: UUID
+    status: str
+    extraction_version: str
+    error: str | None
+    requested_by: UUID

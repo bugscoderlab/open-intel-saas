@@ -84,6 +84,7 @@ class Permission:
     SNAPSHOT_READ = "snapshot.read"
     COLLECTION_RUN = "collection.run"
     COLLECTION_JOB_MANAGE = "collection.job.manage"
+    EXTRACTION_RUN = "extraction.run"
 
 
 ALL_PERMISSIONS = frozenset(
@@ -208,6 +209,12 @@ COLLECTION_PERMISSIONS = frozenset(
     }
 )
 
+EXTRACTION_PERMISSIONS = frozenset(
+    {
+        Permission.EXTRACTION_RUN,
+    }
+)
+
 ORG_BASE_PERMISSIONS = frozenset(
     {
         Permission.ORG_READ,
@@ -261,6 +268,7 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
         | EVIDENCE_PERMISSIONS
         | SNAPSHOT_PERMISSIONS
         | COLLECTION_PERMISSIONS
+        | EXTRACTION_PERMISSIONS
     ),
     Role.ORG_OWNER: frozenset(
         ORG_BASE_PERMISSIONS
@@ -278,6 +286,7 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
         | EVIDENCE_PERMISSIONS
         | SNAPSHOT_PERMISSIONS
         | COLLECTION_PERMISSIONS
+        | EXTRACTION_PERMISSIONS
         | {Permission.ORG_DELETE}
     ),
     Role.ORG_MEMBER: frozenset(
@@ -303,6 +312,7 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
         | EVIDENCE_PERMISSIONS
         | SNAPSHOT_PERMISSIONS
         | COLLECTION_PERMISSIONS
+        | EXTRACTION_PERMISSIONS
     ),
     Role.TEAM_MEMBER: frozenset(
         {
@@ -336,6 +346,7 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
         | EVIDENCE_PERMISSIONS
         | SNAPSHOT_PERMISSIONS
         | COLLECTION_PERMISSIONS
+        | EXTRACTION_PERMISSIONS
     ),
     Role.PROJECT_VIEWER: frozenset(
         {

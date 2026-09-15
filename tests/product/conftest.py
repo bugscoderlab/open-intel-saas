@@ -212,6 +212,8 @@ async def app_client(
     from modules.competitor_intelligence.infrastructure.unit_of_work import (
         SqlCompetitorUnit,
     )
+    from modules.extraction.api.routers import build_extraction_router
+    from modules.extraction.infrastructure.unit_of_work import SqlExtractionUnit
     from modules.platform.api.app import create_app
     from modules.platform.infrastructure.discovery import discover_modules
     from modules.research.api.routers import build_research_router
@@ -235,11 +237,22 @@ async def app_client(
         competitor_unit_factory=lambda: SqlCompetitorUnit(engine),
         collection_router=build_collection_router(),
         collection_unit_factory=lambda: SqlCollectionUnit(engine),
+        extraction_router=build_extraction_router(),
+        extraction_unit_factory=lambda: SqlExtractionUnit(engine),
     )
     app.state.recording_email = recording_email
     from tests.product.fakes import FakeMapsProvider
 
     app.state.collection_maps_provider = FakeMapsProvider()
+    from tests.product.extraction_helpers import (
+        TestObservationSink,
+        TestSnapshotSource,
+    )
+    from tests.product.fakes import FakeExtractor
+
+    app.state.extraction_extractor = FakeExtractor()
+    app.state.extraction_snapshot_source = TestSnapshotSource(engine)
+    app.state.extraction_observation_sink = TestObservationSink(engine)
     from tests.product.fakes import DeterministicEmbedder, RecordingFileStorage
 
     app.state.research_embedder = DeterministicEmbedder()
@@ -271,6 +284,8 @@ async def api(settings: Settings):
     from modules.competitor_intelligence.infrastructure.unit_of_work import (
         SqlCompetitorUnit,
     )
+    from modules.extraction.api.routers import build_extraction_router
+    from modules.extraction.infrastructure.unit_of_work import SqlExtractionUnit
     from modules.platform.api.app import create_app
     from modules.platform.infrastructure.discovery import discover_modules
     from modules.research.api.routers import build_research_router
@@ -295,11 +310,22 @@ async def api(settings: Settings):
         competitor_unit_factory=lambda: SqlCompetitorUnit(engine),
         collection_router=build_collection_router(),
         collection_unit_factory=lambda: SqlCollectionUnit(engine),
+        extraction_router=build_extraction_router(),
+        extraction_unit_factory=lambda: SqlExtractionUnit(engine),
     )
     app.state.recording_email = recording_email
     from tests.product.fakes import FakeMapsProvider
 
     app.state.collection_maps_provider = FakeMapsProvider()
+    from tests.product.extraction_helpers import (
+        TestObservationSink,
+        TestSnapshotSource,
+    )
+    from tests.product.fakes import FakeExtractor
+
+    app.state.extraction_extractor = FakeExtractor()
+    app.state.extraction_snapshot_source = TestSnapshotSource(engine)
+    app.state.extraction_observation_sink = TestObservationSink(engine)
     from tests.product.fakes import DeterministicEmbedder, RecordingFileStorage
 
     app.state.research_embedder = DeterministicEmbedder()

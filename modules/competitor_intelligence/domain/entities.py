@@ -97,7 +97,28 @@ class Observation:
 # (plan §14.4 rule 2; existence validation deferred to Phase 5).
 EVIDENCE_TARGET_SOURCE = "source"
 EVIDENCE_TARGET_NOTEBOOK = "notebook"
-EVIDENCE_TARGET_KINDS = (EVIDENCE_TARGET_SOURCE, EVIDENCE_TARGET_NOTEBOOK)
+# Phase 5 (ticket #50): extraction attaches evidence to collection
+# snapshots — the snapshot id stays opaque (no cross-module FK).
+EVIDENCE_TARGET_SNAPSHOT = "snapshot"
+EVIDENCE_TARGET_KINDS = (
+    EVIDENCE_TARGET_SOURCE,
+    EVIDENCE_TARGET_NOTEBOOK,
+    EVIDENCE_TARGET_SNAPSHOT,
+)
+
+
+@dataclass(frozen=True)
+class ProposedObservation:
+    """One machine-proposed fact from extraction (ticket #50) — the
+    input shape for recording pending observations. Unlike manual
+    entries the confidence comes from the extractor and the kind may be
+    promotion/positioning/review_topic/service, not only price."""
+
+    kind: str
+    confidence: Decimal
+    price_amount: Decimal | None = None
+    price_currency: str | None = None
+    excerpt: str | None = None
 
 
 @dataclass(frozen=True)

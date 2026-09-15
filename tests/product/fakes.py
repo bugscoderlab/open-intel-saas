@@ -13,6 +13,10 @@ recorded, and signed URLs are deterministic — no real bucket is touched.
 """
 
 from datetime import UTC, datetime, timedelta
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from modules.extraction.domain.entities import ExtractionResult
 
 from modules.research.application.errors import EmbeddingProviderError
 from modules.research.domain.embedder import EMBEDDING_DIMENSIONS
@@ -156,3 +160,27 @@ class FakeMapsProvider:
             MapCandidate(**candidate) if isinstance(candidate, dict) else candidate
             for candidate in self.candidates.get((query, location), [])
         ]
+
+
+class FakeExtractor:
+    """Fake Extractor port (extraction, ticket #50): scripted results
+    keyed by exact source text, an optional exception to raise on every
+    call, and a recording of every extracted source text. No network,
+    no provider configuration."""
+
+    def __init__(
+        self,
+        results: "dict[str, ExtractionResult] | None" = None,
+    ) -> None:
+        from modules.extraction.domain.entities import ExtractionResult
+
+        self._result_type = ExtractionResult
+        self.results: "dict[str, ExtractionResult]" = results or {}
+        self.fail_with: Exception | None = None
+        self.extracted: list[str] = []
+
+    async def extract(self, *, source_text: str, source_url: str | None = None):
+        self.extracted.append(source_text)
+        if self.fail_with is not None:
+            raise self.fail_with
+        return self.results.get(source_text, self._result_type(items=()))

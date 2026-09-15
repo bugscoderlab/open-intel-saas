@@ -11,15 +11,19 @@ from decimal import Decimal
 from uuid import UUID, uuid4
 
 from modules.competitor_intelligence.domain.entities import (
+    EVIDENCE_TARGET_SNAPSHOT,
     KIND_PRICE,
     MANUAL_CONFIDENCE,
     MANUAL_EXTRACTION_VERSION,
     OBSERVATION_APPROVED,
     OBSERVATION_PENDING,
     OBSERVATION_REJECTED,
+    EvidenceLink,
     Observation,
+    ProposedObservation,
 )
 from modules.competitor_intelligence.domain.events import COMPETITOR_CHANGE_DETECTED
+from modules.competitor_intelligence.domain.text import sanitize_text
 from modules.competitor_intelligence.domain.unit_of_work import CompetitorUnit
 from modules.platform.application.errors import ConflictError, NotFoundError
 from modules.platform.application.services.authorization import (
@@ -361,3 +365,77 @@ async def reject_observation(
         superseded_by=None,
         created_by=observation.created_by,
     )
+
+
+async def record_proposed_observations(
+    unit: CompetitorUnit,
+    *,
+    project_id: UUID,
+    competitor_id: UUID,
+    snapshot_id: UUID,
+    observed_on: date,
+    extraction_version: str,
+    proposed: list[ProposedObservation],
+    recorded_by: UUID,
+) -> list[Observation]:
+    """System path (ticket #50, spec #47): the extraction drain records
+    machine-proposed facts. They land PENDING like manual entries — the
+    human review queue is the gate between proposed and durable facts —
+    with the extractor's confidence and version marker, plus an
+    approved evidence link to the snapshot (the link is a verbatim
+    reference, not a judgment; the observation it supports is what
+    awaits review). One audit row per batch keeps the drain cheap."""
+    project, competitor = await _load_competitor_scope(unit, project_id, competitor_id)
+    created: list[Observation] = []
+    for item in proposed:
+        observation = Observation(
+            id=uuid4(),
+            organization_id=project.organization_id,
+            project_id=project_id,
+            competitor_id=competitor_id,
+            service_id=None,
+            location_id=None,
+            kind=item.kind,
+            price_amount=item.price_amount,
+            price_currency=item.price_currency,
+            observed_on=observed_on,
+            confidence=item.confidence,
+            extraction_version=extraction_version,
+            approval_state=OBSERVATION_PENDING,
+            superseded_by=None,
+            created_by=recorded_by,
+        )
+        await unit.observations.create(observation)
+        await unit.evidence.create(
+            EvidenceLink(
+                id=uuid4(),
+                organization_id=project.organization_id,
+                project_id=project_id,
+                competitor_id=competitor_id,
+                observation_id=observation.id,
+                target_kind=EVIDENCE_TARGET_SNAPSHOT,
+                target_id=snapshot_id,
+                excerpt=sanitize_text(item.excerpt) if item.excerpt is not None else None,
+                excerpt_start=None,
+                excerpt_end=None,
+                approval_state=OBSERVATION_APPROVED,
+                created_by=recorded_by,
+            )
+        )
+        created.append(observation)
+    await unit.audit.record(
+        AuditEntry(
+            actor_id=recorded_by,
+            action="observation.propose",
+            target_type="snapshot",
+            target_id=str(snapshot_id),
+            organization_id=project.organization_id,
+            payload={
+                "project_id": str(project_id),
+                "competitor_id": str(competitor_id),
+                "extraction_version": extraction_version,
+                "count": len(created),
+            },
+        )
+    )
+    return created
