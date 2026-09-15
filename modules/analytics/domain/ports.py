@@ -47,6 +47,18 @@ class ApprovedFactsSource(Protocol):
         limit: int,
     ) -> Page[CompetitorSummary]: ...
 
+    async def superseded_observations(
+        self,
+        *,
+        project_id: UUID,
+        competitor_ids: tuple[UUID, ...] | None = None,
+        limit: int,
+    ) -> Page[ApprovedObservation]:
+        """Rows an approval has replaced (state 'superseded'), newest
+        first — the durable read model for Changes (glossary) without
+        re-reading the outbox."""
+        ...
+
     async def locations(
         self,
         *,

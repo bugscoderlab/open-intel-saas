@@ -251,6 +251,8 @@ if engine is not None:
                             price_amount=fact.price_amount,
                             price_currency=fact.price_currency,
                             excerpt=fact.excerpt,
+                            claim=fact.claim,
+                            sentiment=fact.sentiment,
                         )
                         for fact in facts
                     ],
@@ -313,6 +315,47 @@ if engine is not None:
                         observed_on=row.observed_on,
                         superseded_by=row.superseded_by,
                         created_at=row.created_at,
+                        claim=row.claim,
+                        sentiment=row.sentiment,
+                    )
+                    for row in rows
+                ),
+                truncated=truncated,
+            )
+
+        async def superseded_observations(
+            self, *, project_id, competitor_ids=None, limit=DEFAULT_ROW_CAP
+        ):
+            from modules.competitor_intelligence.infrastructure.db import (
+                observations as _observations,
+            )
+
+            stmt = (
+                _select(_observations)
+                .where(
+                    _observations.c.project_id == project_id,
+                    _observations.c.approval_state == "superseded",
+                )
+                .order_by(_observations.c.updated_at.desc())
+            )
+            if competitor_ids is not None:
+                stmt = stmt.where(_observations.c.competitor_id.in_(competitor_ids))
+            rows, truncated = await self._query(stmt, limit=limit)
+            return Page(
+                rows=tuple(
+                    ApprovedObservation(
+                        id=row.id,
+                        competitor_id=row.competitor_id,
+                        service_id=row.service_id,
+                        location_id=row.location_id,
+                        kind=row.kind,
+                        price_amount=row.price_amount,
+                        price_currency=row.price_currency,
+                        observed_on=row.observed_on,
+                        superseded_by=row.superseded_by,
+                        created_at=row.created_at,
+                        claim=row.claim,
+                        sentiment=row.sentiment,
                     )
                     for row in rows
                 ),

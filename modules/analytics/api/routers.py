@@ -1,4 +1,4 @@
-"""HTTP routers for the analytics module (tickets #54/#55, spec #52).
+"""HTTP routers for the analytics module (tickets #54–#57, spec #52).
 
 Thin router: parse, authorize behind the matrix, run the named metric
 over the ApprovedFactsSource port, map typed errors to statuses.
@@ -7,7 +7,7 @@ Analytics is read-only — every endpoint is a GET.
 
 from uuid import UUID
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Response
 
 from modules.analytics.api.deps import (
     AnalyticsUnitDep,
@@ -16,6 +16,7 @@ from modules.analytics.api.deps import (
     PrincipalDep,
 )
 from modules.analytics.api.schemas import MetricResponse
+from modules.analytics.application.csv_export import export_filename, metric_to_csv
 from modules.analytics.application.services import analytics_service
 from modules.analytics.domain.entities import MetricResult
 from modules.platform.api.routers import endpoint
@@ -157,5 +158,54 @@ def build_analytics_router() -> APIRouter:
             competitor_ids=(competitor_id,),
         )
         return _metric_response(result)
+
+    @router.get("/projects/{project_id}/analytics/dashboard")
+    @endpoint
+    async def dashboard(
+        project_id: UUID,
+        unit: AnalyticsUnitDep,
+        principal: PrincipalDep,
+        authz: AuthzDep,
+        source: FactsSourceDep,
+        competitor_ids: list[UUID] = Query(default=[]),
+    ) -> dict:
+        return await analytics_service.dashboard(
+            unit,
+            authz,
+            principal,
+            source,
+            project_id=project_id,
+            competitor_ids=tuple(competitor_ids) or None,
+        )
+
+    @router.get("/projects/{project_id}/analytics/export.csv")
+    @endpoint
+    async def export_csv(
+        project_id: UUID,
+        unit: AnalyticsUnitDep,
+        principal: PrincipalDep,
+        authz: AuthzDep,
+        source: FactsSourceDep,
+        metric: str = Query(...),
+        competitor_ids: list[UUID] = Query(default=[]),
+    ) -> Response:
+        result = await analytics_service.run_metric(
+            unit,
+            authz,
+            principal,
+            source,
+            metric_name=metric,
+            project_id=project_id,
+            competitor_ids=tuple(competitor_ids) or None,
+        )
+        return Response(
+            content=metric_to_csv(result),
+            media_type="text/csv",
+            headers={
+                "Content-Disposition": (
+                    f'attachment; filename="{export_filename(metric)}"'
+                )
+            },
+        )
 
     return router
