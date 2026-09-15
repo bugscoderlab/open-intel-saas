@@ -200,6 +200,8 @@ async def app_client(
     email provider so tests can assert invitation delivery."""
     from fastapi.testclient import TestClient
 
+    from modules.analytics.api.routers import build_analytics_router
+    from modules.analytics.infrastructure.unit_of_work import SqlAnalyticsUnit
     from modules.collection.api.routers import (
         build_collection_router,
     )
@@ -239,6 +241,8 @@ async def app_client(
         collection_unit_factory=lambda: SqlCollectionUnit(engine),
         extraction_router=build_extraction_router(),
         extraction_unit_factory=lambda: SqlExtractionUnit(engine),
+        analytics_router=build_analytics_router(),
+        analytics_unit_factory=lambda: SqlAnalyticsUnit(engine),
     )
     app.state.recording_email = recording_email
     from tests.product.fakes import FakeMapsProvider
@@ -253,6 +257,9 @@ async def app_client(
     app.state.extraction_extractor = FakeExtractor()
     app.state.extraction_snapshot_source = TestSnapshotSource(engine)
     app.state.extraction_observation_sink = TestObservationSink(engine)
+    from tests.product.analytics_helpers import TestApprovedFactsSource
+
+    app.state.analytics_facts_source = TestApprovedFactsSource(engine)
     from tests.product.fakes import DeterministicEmbedder, RecordingFileStorage
 
     app.state.research_embedder = DeterministicEmbedder()
@@ -272,6 +279,8 @@ async def api(settings: Settings):
     """
     from httpx import ASGITransport, AsyncClient
 
+    from modules.analytics.api.routers import build_analytics_router
+    from modules.analytics.infrastructure.unit_of_work import SqlAnalyticsUnit
     from modules.collection.api.routers import (
         build_collection_router,
     )
@@ -312,6 +321,8 @@ async def api(settings: Settings):
         collection_unit_factory=lambda: SqlCollectionUnit(engine),
         extraction_router=build_extraction_router(),
         extraction_unit_factory=lambda: SqlExtractionUnit(engine),
+        analytics_router=build_analytics_router(),
+        analytics_unit_factory=lambda: SqlAnalyticsUnit(engine),
     )
     app.state.recording_email = recording_email
     from tests.product.fakes import FakeMapsProvider
@@ -326,6 +337,9 @@ async def api(settings: Settings):
     app.state.extraction_extractor = FakeExtractor()
     app.state.extraction_snapshot_source = TestSnapshotSource(engine)
     app.state.extraction_observation_sink = TestObservationSink(engine)
+    from tests.product.analytics_helpers import TestApprovedFactsSource
+
+    app.state.analytics_facts_source = TestApprovedFactsSource(engine)
     from tests.product.fakes import DeterministicEmbedder, RecordingFileStorage
 
     app.state.research_embedder = DeterministicEmbedder()

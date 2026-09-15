@@ -42,6 +42,8 @@ def create_app(
     collection_unit_factory=None,
     extraction_router: APIRouter | None = None,
     extraction_unit_factory=None,
+    analytics_router: APIRouter | None = None,
+    analytics_unit_factory=None,
 ) -> FastAPI:
     """Assemble the API. Fails to start if the platform module is absent.
 
@@ -74,6 +76,10 @@ def create_app(
         raise RuntimeError(
             "cannot start: an extraction router was provided without an extraction unit factory"
         )
+    if analytics_router is not None and analytics_unit_factory is None:
+        raise RuntimeError(
+            "cannot start: an analytics router was provided without an analytics unit factory"
+        )
 
     app = FastAPI(title="Open Intel API")
     app.state.module_states = states
@@ -86,6 +92,7 @@ def create_app(
     app.state.competitor_unit_factory = competitor_unit_factory
     app.state.collection_unit_factory = collection_unit_factory
     app.state.extraction_unit_factory = extraction_unit_factory
+    app.state.analytics_unit_factory = analytics_unit_factory
 
     app.add_middleware(
         CORSMiddleware,
@@ -124,4 +131,9 @@ def create_app(
         extraction_state = next((s for s in states if s.name == "extraction"), None)
         if extraction_state is None or extraction_state.enabled:
             app.include_router(extraction_router)
+
+    if analytics_router is not None:
+        analytics_state = next((s for s in states if s.name == "analytics"), None)
+        if analytics_state is None or analytics_state.enabled:
+            app.include_router(analytics_router)
     return app

@@ -85,6 +85,7 @@ class Permission:
     COLLECTION_RUN = "collection.run"
     COLLECTION_JOB_MANAGE = "collection.job.manage"
     EXTRACTION_RUN = "extraction.run"
+    ANALYTICS_READ = "analytics.read"
 
 
 ALL_PERMISSIONS = frozenset(
@@ -215,6 +216,12 @@ EXTRACTION_PERMISSIONS = frozenset(
     }
 )
 
+ANALYTICS_PERMISSIONS = frozenset(
+    {
+        Permission.ANALYTICS_READ,
+    }
+)
+
 ORG_BASE_PERMISSIONS = frozenset(
     {
         Permission.ORG_READ,
@@ -269,6 +276,7 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
         | SNAPSHOT_PERMISSIONS
         | COLLECTION_PERMISSIONS
         | EXTRACTION_PERMISSIONS
+        | ANALYTICS_PERMISSIONS
     ),
     Role.ORG_OWNER: frozenset(
         ORG_BASE_PERMISSIONS
@@ -287,6 +295,7 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
         | SNAPSHOT_PERMISSIONS
         | COLLECTION_PERMISSIONS
         | EXTRACTION_PERMISSIONS
+        | ANALYTICS_PERMISSIONS
         | {Permission.ORG_DELETE}
     ),
     Role.ORG_MEMBER: frozenset(
@@ -313,6 +322,7 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
         | SNAPSHOT_PERMISSIONS
         | COLLECTION_PERMISSIONS
         | EXTRACTION_PERMISSIONS
+        | ANALYTICS_PERMISSIONS
     ),
     Role.TEAM_MEMBER: frozenset(
         {
@@ -330,6 +340,7 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
             Permission.OBSERVATION_READ,
             Permission.EVIDENCE_READ,
             Permission.SNAPSHOT_READ,
+            Permission.ANALYTICS_READ,
         }
     ),
     Role.PROJECT_EDITOR: frozenset(
@@ -347,6 +358,7 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
         | SNAPSHOT_PERMISSIONS
         | COLLECTION_PERMISSIONS
         | EXTRACTION_PERMISSIONS
+        | ANALYTICS_PERMISSIONS
     ),
     Role.PROJECT_VIEWER: frozenset(
         {
@@ -363,6 +375,7 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
             Permission.OBSERVATION_READ,
             Permission.EVIDENCE_READ,
             Permission.SNAPSHOT_READ,
+            Permission.ANALYTICS_READ,
         }
     ),
 }

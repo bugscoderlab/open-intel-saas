@@ -134,6 +134,7 @@ containers = [
     "modules.competitor_intelligence",
     "modules.collection",
     "modules.extraction",
+    "modules.analytics",
 ]
 
 [[tool.importlinter.contracts]]
@@ -155,12 +156,16 @@ source_modules = [
     "modules.extraction.api",
     "modules.extraction.application",
     "modules.extraction.domain",
+    "modules.analytics.api",
+    "modules.analytics.application",
+    "modules.analytics.domain",
 ]
 forbidden_modules = [
     "modules.platform.infrastructure",
     "modules.research.infrastructure",
     "modules.collection.infrastructure",
     "modules.extraction.infrastructure",
+    "modules.analytics.infrastructure",
 ]
 
 [[tool.importlinter.contracts]]
@@ -172,6 +177,7 @@ source_modules = [
     "modules.competitor_intelligence.domain",
     "modules.collection.domain",
     "modules.extraction.domain",
+    "modules.analytics.domain",
 ]
 forbidden_modules = [
     "fastapi",

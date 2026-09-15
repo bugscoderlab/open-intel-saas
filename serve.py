@@ -15,6 +15,20 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+from modules.analytics.api.routers import (  # noqa: E402
+    build_analytics_router,
+)
+from modules.analytics.domain.entities import (  # noqa: E402
+    DEFAULT_ROW_CAP,
+    STATEMENT_TIMEOUT_SECONDS,
+    ApprovedObservation,
+    CatalogService,
+    CompetitorLocation,
+    Page,
+)
+from modules.analytics.infrastructure.unit_of_work import (  # noqa: E402
+    SqlAnalyticsUnit,
+)
 from modules.collection.api.routers import (  # noqa: E402
     build_collection_router,
 )
@@ -114,6 +128,10 @@ app = create_app(
     extraction_unit_factory=(
         (lambda: SqlExtractionUnit(engine)) if engine is not None else None
     ),
+    analytics_router=build_analytics_router() if engine is not None else None,
+    analytics_unit_factory=(
+        (lambda: SqlAnalyticsUnit(engine)) if engine is not None else None
+    ),
 )
 
 if engine is not None:
@@ -164,9 +182,10 @@ if engine is not None:
     # The SnapshotSource port, implemented here in the composition root
     # over the collection tables (plan §14.4: module infrastructures
     # meet only at the composition root).
+    from sqlalchemy import select as _select
+
     class _CollectionSnapshotSource:
         async def get(self, snapshot_id) -> SnapshotContent | None:
-            from sqlalchemy import select as _select
 
             from modules.collection.infrastructure.db import (
                 snapshots as _snapshots,
@@ -240,6 +259,104 @@ if engine is not None:
                 return len(created)
 
     app.state.extraction_observation_sink = _CompetitorObservationSink()
+
+    # Analytics (spec #52): the ApprovedFactsSource port, implemented
+    # here over the competitor-intelligence tables. Read-only, guarded
+    # (statement timeout + row cap with truncation flag) — dashboards
+    # stay available when collectors/LLMs are down.
+    class _CompetitorFactsSource:
+        async def _query(self, stmt, *, limit: int):
+            from sqlalchemy import text as _text
+
+            async with SqlCompetitorUnit(engine) as unit:
+                assert unit._session is not None
+                await unit._session.execute(  # noqa: SLF001
+                    # Constant integer — SET LOCAL takes no bind parameters.
+                    _text(
+                        f"SET LOCAL statement_timeout = {STATEMENT_TIMEOUT_SECONDS * 1000}"
+                    )
+                )
+                result = await unit._session.execute(stmt.limit(limit + 1))  # noqa: SLF001
+                rows = result.all()
+            return rows[:limit], len(rows) > limit
+
+        async def approved_observations(
+            self, *, project_id, competitor_id=None, kinds=None, limit=DEFAULT_ROW_CAP
+        ) -> Page[ApprovedObservation]:
+            from modules.competitor_intelligence.infrastructure.db import (
+                observations as _observations,
+            )
+
+            stmt = _select(_observations).where(
+                _observations.c.project_id == project_id,
+                _observations.c.approval_state == "approved",
+                _observations.c.superseded_by.is_(None),
+            )
+            if competitor_id is not None:
+                stmt = stmt.where(_observations.c.competitor_id == competitor_id)
+            if kinds is not None:
+                stmt = stmt.where(_observations.c.kind.in_(kinds))
+            rows, truncated = await self._query(
+                stmt.order_by(_observations.c.observed_on), limit=limit
+            )
+            return Page(
+                rows=tuple(
+                    ApprovedObservation(
+                        id=row.id,
+                        competitor_id=row.competitor_id,
+                        service_id=row.service_id,
+                        location_id=row.location_id,
+                        kind=row.kind,
+                        price_amount=row.price_amount,
+                        price_currency=row.price_currency,
+                        observed_on=row.observed_on,
+                        superseded_by=row.superseded_by,
+                    )
+                    for row in rows
+                ),
+                truncated=truncated,
+            )
+
+        async def services(self, *, project_id, limit=DEFAULT_ROW_CAP):
+            from modules.competitor_intelligence.infrastructure.db import (
+                services as _services,
+            )
+
+            stmt = _select(_services).where(_services.c.project_id == project_id)
+            rows, truncated = await self._query(stmt, limit=limit)
+            return Page(
+                rows=tuple(
+                    CatalogService(id=row.id, project_id=row.project_id, name=row.name)
+                    for row in rows
+                ),
+                truncated=truncated,
+            )
+
+        async def locations(
+            self, *, project_id, competitor_id=None, limit=DEFAULT_ROW_CAP
+        ):
+            from modules.competitor_intelligence.infrastructure.db import (
+                locations as _locations,
+            )
+
+            stmt = _select(_locations).where(_locations.c.project_id == project_id)
+            if competitor_id is not None:
+                stmt = stmt.where(_locations.c.competitor_id == competitor_id)
+            rows, truncated = await self._query(stmt, limit=limit)
+            return Page(
+                rows=tuple(
+                    CompetitorLocation(
+                        id=row.id,
+                        project_id=row.project_id,
+                        competitor_id=row.competitor_id,
+                        name=row.name,
+                    )
+                    for row in rows
+                ),
+                truncated=truncated,
+            )
+
+    app.state.analytics_facts_source = _CompetitorFactsSource()
 
     @app.on_event("startup")
     async def _start_research_dispatcher() -> None:
