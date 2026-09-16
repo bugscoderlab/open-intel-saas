@@ -49,6 +49,13 @@ class Settings:
         extraction_model: Extraction model name.
         extraction_api_key: Optional provider key; empty = the
             provider's standard env var applies.
+        chat_provider: LLM provider for the intelligence-chatbot router
+            and composer (Esperanto name). Empty = chat tools report
+            unavailability instead of failing conversations (spec #58,
+            ticket #60).
+        chat_model: Chat model name.
+        chat_api_key: Optional provider key; empty = the provider's
+            standard env var applies.
         seed_password: Password for users created by ``make seed``.
     """
 
@@ -66,6 +73,9 @@ class Settings:
     extraction_provider: str = ""
     extraction_model: str = ""
     extraction_api_key: str = ""
+    chat_provider: str = ""
+    chat_model: str = ""
+    chat_api_key: str = ""
     storage_bucket: str = "open-intel-files"
     seed_password: str = "seed-password-change-me"
     collection_daily_fetch_quota: int = 100
@@ -93,6 +103,9 @@ class Settings:
             extraction_provider=environ.get("OPEN_INTEL_EXTRACTION_PROVIDER", ""),
             extraction_model=environ.get("OPEN_INTEL_EXTRACTION_MODEL", ""),
             extraction_api_key=environ.get("OPEN_INTEL_EXTRACTION_API_KEY", ""),
+            chat_provider=environ.get("OPEN_INTEL_CHAT_PROVIDER", ""),
+            chat_model=environ.get("OPEN_INTEL_CHAT_MODEL", ""),
+            chat_api_key=environ.get("OPEN_INTEL_CHAT_API_KEY", ""),
             storage_bucket=environ.get("OPEN_INTEL_STORAGE_BUCKET", "open-intel-files"),
             seed_password=environ.get(
                 "OPEN_INTEL_SEED_PASSWORD", "seed-password-change-me"

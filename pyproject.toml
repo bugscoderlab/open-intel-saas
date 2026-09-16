@@ -135,6 +135,7 @@ containers = [
     "modules.collection",
     "modules.extraction",
     "modules.analytics",
+    "modules.intelligence_chat",
 ]
 
 [[tool.importlinter.contracts]]
@@ -159,6 +160,9 @@ source_modules = [
     "modules.analytics.api",
     "modules.analytics.application",
     "modules.analytics.domain",
+    "modules.intelligence_chat.api",
+    "modules.intelligence_chat.application",
+    "modules.intelligence_chat.domain",
 ]
 forbidden_modules = [
     "modules.platform.infrastructure",
@@ -166,6 +170,7 @@ forbidden_modules = [
     "modules.collection.infrastructure",
     "modules.extraction.infrastructure",
     "modules.analytics.infrastructure",
+    "modules.intelligence_chat.infrastructure",
 ]
 
 [[tool.importlinter.contracts]]
@@ -178,6 +183,7 @@ source_modules = [
     "modules.collection.domain",
     "modules.extraction.domain",
     "modules.analytics.domain",
+    "modules.intelligence_chat.domain",
 ]
 forbidden_modules = [
     "fastapi",
