@@ -19,6 +19,7 @@ import jsonschema
 from modules.intelligence_chat.domain.entities import (
     MAX_INVOCATIONS_PER_ANSWER,
     PlanStep,
+    ToolContext,
     ToolResult,
     ToolSpec,
 )
@@ -27,7 +28,7 @@ from modules.intelligence_chat.domain.errors import (
     ToolArgumentError,
 )
 
-HandlerFn = Callable[[dict], Awaitable[ToolResult]]
+HandlerFn = Callable[[dict, ToolContext], Awaitable[ToolResult]]
 
 
 @dataclass(frozen=True)
@@ -74,7 +75,11 @@ class ToolRegistry:
         if tool is None:
             raise PlanValidationError(f"unknown tool {step.tool!r}")
         try:
-            jsonschema.validate(step.arguments, tool.spec.arguments_schema)
+            jsonschema.validate(
+                step.arguments,
+                tool.spec.arguments_schema,
+                format_checker=jsonschema.Draft202012Validator.FORMAT_CHECKER,
+            )
         except jsonschema.ValidationError as exc:
             raise ToolArgumentError(
                 f"invalid arguments for {step.tool!r}: {exc.message}"
@@ -84,6 +89,7 @@ class ToolRegistry:
         self,
         step: PlanStep,
         *,
+        context: ToolContext,
         permissions: frozenset[str],
         budget: Budget,
     ) -> ToolResult:
@@ -112,7 +118,7 @@ class ToolRegistry:
         budget.remaining -= 1
         budget.per_tool_spent[step.tool] = spent + 1
         try:
-            return await tool.handler(step.arguments)
+            return await tool.handler(step.arguments, context)
         except Exception as exc:  # noqa: BLE001 — a broken tool must not
             # break the answer; it becomes an unavailable note.
             return ToolResult(tool=step.tool, ok=False, error=str(exc))

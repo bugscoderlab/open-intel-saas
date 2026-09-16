@@ -5,6 +5,7 @@ errors. Pure domain — no framework or provider imports
 
 from dataclasses import dataclass, field
 from typing import Any
+from uuid import UUID
 
 MAX_INVOCATIONS_PER_ANSWER = 5
 
@@ -52,6 +53,14 @@ class ToolSpec:
 
 
 @dataclass(frozen=True)
+class ToolContext:
+    """Out-of-band scope handed to handlers — never part of the
+    validated arguments (schemas are additionalProperties: false)."""
+
+    project_id: UUID
+
+
+@dataclass(frozen=True)
 class PlanStep:
     tool: str
     arguments: dict[str, Any]
@@ -62,10 +71,56 @@ class ToolPlan:
     steps: tuple[PlanStep, ...]
 
 
+@dataclass(frozen=True)
+class ResearchHit:
+    """One research-search result as the chatbot sees it (bounded,
+    citation-ready — the shell renders, the tool never invents refs)."""
+
+    source_id: UUID
+    title: str
+    excerpt: str
+    score: float
+
+
+@dataclass(frozen=True)
+class ServicePrice:
+    service_id: UUID
+    service_name: str
+    latest_price_amount: str | None
+    latest_price_currency: str | None
+
+
+@dataclass(frozen=True)
+class CompetitorProfile:
+    """The competitor_lookup answer: identity + locations + services
+    with their latest approved prices."""
+
+    competitor_id: UUID
+    name: str
+    locations: tuple[str, ...]
+    services: tuple[ServicePrice, ...]
+
+
+@dataclass(frozen=True)
+class MetricRun:
+    """An analytics-metric result, serialized for the composer."""
+
+    metric: str
+    unit: str
+    description: str
+    points: tuple[dict, ...]
+    truncated: bool
+
+
 __all__ = [
+    "CompetitorProfile",
     "Citation",
+    "MetricRun",
+    "ResearchHit",
+    "ServicePrice",
     "MAX_INVOCATIONS_PER_ANSWER",
     "PlanStep",
+    "ToolContext",
     "ToolPlan",
     "ToolResult",
     "ToolSpec",

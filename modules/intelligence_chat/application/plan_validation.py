@@ -46,7 +46,7 @@ def validate_plan_against_allowlist(
     allowed = {spec.name: spec for spec in allowlist}
     registry = ToolRegistry()
 
-    async def _placeholder(arguments: dict):  # pragma: no cover
+    async def _placeholder(arguments: dict, context):  # pragma: no cover
         raise NotImplementedError
 
     for spec in allowlist:
